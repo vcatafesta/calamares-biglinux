@@ -43,77 +43,108 @@ LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 export TEXTDOMAINDIR="/usr/share/locale"
 export TEXTDOMAIN=calamares-biglinux
 
-# md5sum
-if [ "$(ps -e | grep biglinux-verify)" != "" ]; then
-	windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
-	sleep 600 | zenity \
-								--attach="$windowID" \
-								--width=300 \
-								--progress \
-								--title=$"Please wait..." \
-								--pulsate \
-								--no-cancel \
-								--auto-close \
-								--text $"Checking the integrity of the download and storage device..." &
-fi
+function sh_calamares_biglinux_main() {
+	local limit="$1"
+	local grace_time="$2"
+	local verify_limit=0
 
-while [ "$(ps -e | grep biglinux-verify)" != "" ]; do
-	sleep 1
-done
-killall zenity
+	# Verifica se o parâmetro é '--limit'
+	if [[ "$limit" == '--limit' ]]; then
+		verify_limit=1
 
-if [ ! -f "/tmp/checksum_biglinux_ok.html" ]; then
-	/usr/bin/biglinux-verify-md5sum
-	if [ -f "/tmp/md5sum_big_fail" ]; then
-		exit 1
+		# Verifica se grace_time é um número válido
+		if [[ ! "$grace_time" =~ ^-?[0-9]+$ ]]; then
+			grace_time=30 # Define um valor padrão se não for um número válido
+		fi
+	else
+		# Valor padrão para verify_limit se não for '--limit'
+		grace_time=30
 	fi
-fi
 
-# if the ISO was generated more than 30 days ago, issue ALERT
-if [ "$(echo $(($(date +%s) / 86400)))" -gt "$(($(cat /etc/big-release | grep UNIX_TIMESTAMP= | cut -d "=" -f2) + 30))" ]; then
-	yad --image=emblem-warning \
-		--image-on-top \
-		--form \
-		--width=500 \
-		--height=100 \
-		--fixed \
-		--align=center \
-		--field=$"<b>Do you want to proceed with the installation of this old version anyway?</b>
+	# md5sum
+	#if [ "$(ps -e | grep biglinux-verify)" != "" ]; then
+	if pgrep -x "biglinux-verify" >/dev/null; then
+		windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
+		sleep 600 | zenity \
+			--attach="$windowID" \
+			--width=300 \
+			--progress \
+			--title=$"Please wait..." \
+			--pulsate \
+			--no-cancel \
+			--auto-close \
+			--text $"Checking the integrity of the download and storage device..." &
+	fi
+	#while [ "$(ps -e | grep biglinux-verify)" != "" ]; do
+	#	sleep 1
+	#done
+	while pgrep -x "biglinux-verify" >/dev/null; do
+		sleep 1
+	done
+	killall zenity
+
+	# Verifica se o arquivo de verificação de checksum não existe
+	if [[ ! -f "/tmp/checksum_biglinux_ok.html" ]]; then
+		# Executa a verificação de MD5
+		/usr/bin/biglinux-verify-md5sum
+
+		# Se o arquivo de falha foi criado, sai com erro
+		[[ -f "/tmp/md5sum_big_fail" ]] && { exit 1; }
+	fi
+
+	# verifica se foi definido um limite como parametro
+	if ((verify_limit)); then
+		# Obtém o timestamp atual em dias desde a época UNIX
+		current_day=$(($(date +%s) / 86400))
+
+		# Obtém o timestamp do arquivo, também em dias desde a época UNIX
+		release_day=$(grep 'UNIX_TIMESTAMP=' /etc/big-release | cut -d '=' -f2)
+
+		# Calcula a diferença
+		if ((current_day > release_day + "$grace_time")); then
+			# if the ISO was generated more than 30 days ago, issue ALERT
+			if ! yad --image=emblem-warning \
+				--image-on-top \
+				--form \
+				--width=500 \
+				--height=100 \
+				--fixed \
+				--align=center \
+				--field=$"<b>Do you want to proceed with the installation of this old version anyway?</b>
     :LBL" \
-		--text $"BigLinux is a system with weekly updates and this version was released more than a month ago.\nWe recommend downloading a more recent version.
+				--text $"BigLinux is a system with weekly updates and this version was released more than a month ago.\nWe recommend downloading a more recent version.
     " \
-		--button=$"Continue":0 \
-		--button=$"Close":1 \
-		--center \
-		--on-top \
-		--borders=20 \
-		--title=$"Outdated Version" \
-		--window-icon=emblem-warning
-
-	if [ "$?" = "1" ]; then
-		exit 1
+				--button=$"Continue":0 \
+				--button=$"Close":1 \
+				--center \
+				--on-top \
+				--borders=20 \
+				--title=$"Outdated Version" \
+				--window-icon=emblem-warning; then
+				exit 1
+			fi
+		fi
 	fi
-fi
 
-# disable swap on disk
-for diskswap in $(blkid | grep 'TYPE="swap"' | grep -v zram | cut -f1 -d:); do
-	swapoff $diskswap
-done
+	# disable swap on disk
+	for diskswap in $(blkid | grep 'TYPE="swap"' | grep -v zram | cut -f1 -d:); do
+		swapoff $diskswap
+	done
 
-if [ "${LANG:0:2}" = "pt" ]; then
-	sed -i 's|pt/|pt/|g' /usr/share/calamares/branding/biglinux/show.qml
-elif [ "${LANG:0:2}" = "es" ]; then
-	sed -i 's|pt/|es/|g' /usr/share/calamares/branding/biglinux/show.qml
+	if [ "${LANG:0:2}" = "pt" ]; then
+		sed -i 's|pt/|pt/|g' /usr/share/calamares/branding/biglinux/show.qml
+	elif [ "${LANG:0:2}" = "es" ]; then
+		sed -i 's|pt/|es/|g' /usr/share/calamares/branding/biglinux/show.qml
 
-else
-	sed -i 's|pt/|en/|g' /usr/share/calamares/branding/biglinux/show.qml
-fi
+	else
+		sed -i 's|pt/|en/|g' /usr/share/calamares/branding/biglinux/show.qml
+	fi
 
-if [ ! -f "/etc/calamares/biglinux" ]; then
+	if [ ! -f "/etc/calamares/biglinux" ]; then
 
-	# Simplify welcome
+		# Simplify welcome
 
-	echo '---
+		echo '---
 showSupportUrl:         false
 showKnownIssuesUrl:     false
 showReleaseNotesUrl:    false
@@ -139,33 +170,33 @@ geoip:
     selector: "CountryCode"
       ' >/etc/calamares/modules/welcome.conf
 
-	# Force btrfs compression using zstd
-	sed -i '/filesystem: btrfs/!b; :a; n; /^\s\{6\}options:/ s/defaults.*/defaults, noatime, compress-force=zstd:9 ]\n      ssdOptions: [ discard=async ]\n      hddOptions: [ autodefrag ]/; ta' /usr/share/calamares/modules/mount.conf
+		# Force btrfs compression using zstd
+		sed -i '/filesystem: btrfs/!b; :a; n; /^\s\{6\}options:/ s/defaults.*/defaults, noatime, compress-force=zstd:9 ]\n      ssdOptions: [ discard=async ]\n      hddOptions: [ autodefrag ]/; ta' /usr/share/calamares/modules/mount.conf
 
-	# btrfs: defaults,noatime,autodefrag,compress=zstd
-	#sed -i 's|btrfs: defaults|btrfs: defaults,noatime,compress=zstd|g' /usr/share/calamares/modules/fstab.conf
-	#sed -i 's|btrfs: discard=async,ssd|#btrfs: discard=async,ssd|g' /usr/share/calamares/modules/fstab.conf
-	#sed -i 's|ssdExtraMountOptions:|#ssdExtraMountOptions:|g' /usr/share/calamares/modules/fstab.conf
+		# btrfs: defaults,noatime,autodefrag,compress=zstd
+		#sed -i 's|btrfs: defaults|btrfs: defaults,noatime,compress=zstd|g' /usr/share/calamares/modules/fstab.conf
+		#sed -i 's|btrfs: discard=async,ssd|#btrfs: discard=async,ssd|g' /usr/share/calamares/modules/fstab.conf
+		#sed -i 's|ssdExtraMountOptions:|#ssdExtraMountOptions:|g' /usr/share/calamares/modules/fstab.conf
 
-	# Use btrfs for default
-	sed -i 's|defaultFileSystemType.*"ext4"|defaultFileSystemType:  "btrfs"|g' /usr/share/calamares/modules/partition.conf
+		# Use btrfs for default
+		sed -i 's|defaultFileSystemType.*"ext4"|defaultFileSystemType:  "btrfs"|g' /usr/share/calamares/modules/partition.conf
 
-	# Change initcpio to systemd
-	#sed -i 's|"base", "udev"|"systemd"|g' /usr/lib/calamares/modules/initcpiocfg/main.py
+		# Change initcpio to systemd
+		#sed -i 's|"base", "udev"|"systemd"|g' /usr/lib/calamares/modules/initcpiocfg/main.py
 
-	# Clean initcpio
-	#sed -i 's|, "keyboard", "keymap", "consolefont"||g' /usr/lib/calamares/modules/initcpiocfg/main.py
+		# Clean initcpio
+		#sed -i 's|, "keyboard", "keymap", "consolefont"||g' /usr/lib/calamares/modules/initcpiocfg/main.py
 
-	# Change initcpio plymouth to sd version
-	sed -i 's|"plymouth"|"kms plymouth"|g' /usr/lib/calamares/modules/initcpiocfg/main.py
+		# Change initcpio plymouth to sd version
+		sed -i 's|"plymouth"|"kms plymouth"|g' /usr/lib/calamares/modules/initcpiocfg/main.py
 
-	# not disable pacman-init
-	# sed -i '/^disable:/,$d' /usr/share/calamares/modules/services.conf
+		# not disable pacman-init
+		# sed -i '/^disable:/,$d' /usr/share/calamares/modules/services.conf
 
-	# failsafe if services not generated in boot
-	if [ "$(cat /etc/calamares/modules/services.conf | wc -l)" -lt "15" ]; then
+		# failsafe if services not generated in boot
+		if [ "$(cat /etc/calamares/modules/services.conf | wc -l)" -lt "15" ]; then
 
-		echo 'services:
+			echo 'services:
     - name: bluetooth
       mandatory: false
 
@@ -222,11 +253,11 @@ disable:
     - name: pacman-init
       mandatory: false' >/etc/calamares/modules/services.conf
 
-	fi
+		fi
 
-	sed -i 's|timers:||g' /etc/calamares/modules/services.conf
+		sed -i 's|timers:||g' /etc/calamares/modules/services.conf
 
-	echo "
+		echo "
 ---
 defaultGroups:
     - cdrom
@@ -259,16 +290,16 @@ userShell:       /bin/bash
 passwordRequirements:
     nonempty: true" >/etc/calamares/modules/users.conf
 
-	echo '---
+		echo '---
 keyrings:
     - archlinux
     - manjaro
     - biglinux' >/etc/calamares/modules/postcfg.conf
 
-	#sed -i 's|initialSwapChoice: none|initialSwapChoice: small|g' /etc/calamares/modules/partition.conf
+		#sed -i 's|initialSwapChoice: none|initialSwapChoice: small|g' /etc/calamares/modules/partition.conf
 
-	# General configuration
-	echo '---
+		# General configuration
+		echo '---
 modules-search: [ local ]
 
 sequence:
@@ -317,133 +348,137 @@ disable-cancel: false
 disable-cancel-during-exec: false
 quit-at-end: false' >/etc/calamares/settings.conf
 
-	touch /etc/calamares/biglinux
+		touch /etc/calamares/biglinux
 
-fi
-
-#disable pacman-key populate
-sed -i '/init_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
-sed -i '/self.populate_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
-
-#save EFI partitions
-rm -f /tmp/efi-partitions
-mkdir -p /boot/efi
-
-DEVICE_LIVE_BOOT_TMP="$(readlink -f "$(df -h /run/miso/bootmnt/ | awk '{ print $1 }' | grep '/dev/')" | sed 's|/dev/||'g)"
-if [ "$(echo "$DEVICE_LIVE_BOOT_TMP" | grep dm)" != "" ]; then
-	DEVICE_LIVE_BOOT="$(ls /sys/block/${DEVICE_LIVE_BOOT_TMP}/slaves | sed 's|[0-9]||g')"
-else
-	DEVICE_LIVE_BOOT="$DEVICE_LIVE_BOOT_TMP"
-fi
-
-for i in $(LANGUAGE=C fdisk -l | grep -e "EFI System" -e "FAT" | cut -f1 -d" " | grep -v "$DEVICE_LIVE_BOOT"); do
-	umount -l /boot/efi
-	mount "$i" /boot/efi
-	if [ -d /boot/efi/EFI ]; then
-		echo "$i" >>/tmp/efi-partitions
 	fi
-	umount -l /boot/efi
 
-done
+	#disable pacman-key populate
+	sed -i '/init_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
+	sed -i '/self.populate_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
 
-# Umount partitions
-for i in $(blkid | grep -v 'TYPE="swap"' | grep -v 'TYPE="squashfs"' | grep -v '^/dev/sr0' | cut -f1 -d":"); do
-	umount "$i"
-done
+	#save EFI partitions
+	rm -f /tmp/efi-partitions
+	mkdir -p /boot/efi
 
-# boot EFI without partition EFI
-if [ -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" = "" ]; then
-	LIVEBOOT=EFI
-	PARTITION=LEGACY
+	DEVICE_LIVE_BOOT_TMP="$(readlink -f "$(df -h /run/miso/bootmnt/ | awk '{ print $1 }' | grep '/dev/')" | sed 's|/dev/||'g)"
+	if [ "$(echo "$DEVICE_LIVE_BOOT_TMP" | grep dm)" != "" ]; then
+		DEVICE_LIVE_BOOT="$(ls /sys/block/${DEVICE_LIVE_BOOT_TMP}/slaves | sed 's|[0-9]||g')"
+	else
+		DEVICE_LIVE_BOOT="$DEVICE_LIVE_BOOT_TMP"
+	fi
 
-	TEXT_01=$"Do you want to proceed with the installation in EFI mode?"
-	TEXT_02=$"The current boot is using <span color='#CC2222'>EFI</span> mode, but I did not find any EFI partition on this computer.
+	for i in $(LANGUAGE=C fdisk -l | grep -e "EFI System" -e "FAT" | cut -f1 -d" " | grep -v "$DEVICE_LIVE_BOOT"); do
+		umount -l /boot/efi
+		mount "$i" /boot/efi
+		if [ -d /boot/efi/EFI ]; then
+			echo "$i" >>/tmp/efi-partitions
+		fi
+		umount -l /boot/efi
+
+	done
+
+	# Umount partitions
+	for i in $(blkid | grep -v 'TYPE="swap"' | grep -v 'TYPE="squashfs"' | grep -v '^/dev/sr0' | cut -f1 -d":"); do
+		umount "$i"
+	done
+
+	# boot EFI without partition EFI
+	if [ -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" = "" ]; then
+		LIVEBOOT=EFI
+		PARTITION=LEGACY
+
+		TEXT_01=$"Do you want to proceed with the installation in EFI mode?"
+		TEXT_02=$"The current boot is using <span color='#CC2222'>EFI</span> mode, but I did not find any EFI partition on this computer.
 
 If this computer already has another system installed and you intend 
 to keep it installed, you will probably need to change the 
 configuration in the BIOS to boot in Legacy mode, also 
 called BIOS mode."
-	yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
-		--align=center \
-		--field="<b>$TEXT_01</b>
+		yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
+			--align=center \
+			--field="<b>$TEXT_01</b>
 :LBL" \
-		--text "$TEXT_02
+			--text "$TEXT_02
 " \
-		--button=$"Continue"!gtk-apply:0 \
-		--button=$"Close"!gtk-cancel:1 \
-		--center --on-top --borders=20 --title=$"Install the system" \
-		--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
+			--button=$"Continue"!gtk-apply:0 \
+			--button=$"Close"!gtk-cancel:1 \
+			--center --on-top --borders=20 --title=$"Install the system" \
+			--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
 
-	if [ "$?" = "1" ]; then
-		exit
+		if [ "$?" = "1" ]; then
+			exit
+		fi
 	fi
-fi
 
-# legacy boot and EFI partition
-if [ ! -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" != "" ]; then
-	LIVEBOOT=LEGACY
-	PARTITION=EFI
-	TEXT_03=$"Do you want to proceed with the installation in Legacy/BIOS mode?"
-	TEXT_04=$"The current boot is using <span color='#CC2222'>Legacy/BIOS</span> mode, but I found at least one EFI partition on this computer. 
+	# legacy boot and EFI partition
+	if [ ! -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" != "" ]; then
+		LIVEBOOT=LEGACY
+		PARTITION=EFI
+		TEXT_03=$"Do you want to proceed with the installation in Legacy/BIOS mode?"
+		TEXT_04=$"The current boot is using <span color='#CC2222'>Legacy/BIOS</span> mode, but I found at least one EFI partition on this computer. 
 
 For the installation to be successful, you will probably need to 
 change the configuration in the BIOS to boot in EFI or UEFI mode."
-	yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
-		--align=center \
-		--field="<b>$TEXT_03</b>
+		yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
+			--align=center \
+			--field="<b>$TEXT_03</b>
 :LBL" \
-		--text "$TEXT_04
+			--text "$TEXT_04
 " \
-		--button=$"Continue"!gtk-apply:0 \
-		--button=$"Close"!gtk-cancel:1 \
-		--center --on-top --borders=20 --title=$"Install the system" \
-		--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
+			--button=$"Continue"!gtk-apply:0 \
+			--button=$"Close"!gtk-cancel:1 \
+			--center --on-top --borders=20 --title=$"Install the system" \
+			--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
 
-	if [ "$?" = "1" ]; then
-		exit
+		if [ "$?" = "1" ]; then
+			exit
+		fi
 	fi
-fi
 
-rm -f /tmp/start_calamares
+	rm -f /tmp/start_calamares
 
-cd /usr/share/bigbashview/apps/calamares/
-bigbashview -s 1100x600 -n $"Install System" -p bbv-calamares -c transparent -w frameless index.html
+	cd /usr/share/bigbashview/apps/calamares/
+	bigbashview -s 1100x600 -n $"Install System" -p bbv-calamares -c transparent -w frameless index.html
 
-# Start calamares
-if [ -e "/tmp/start_calamares" ]; then
-	cp -f /usr/share/biglinux/themes/biglinux/.config/kdeglobals /root/.config/kdeglobals
-	sudo QT_QUICK_BACKEND=software /usr/bin/calamares-manjaro
+	# Start calamares
+	if [ -e "/tmp/start_calamares" ]; then
+		cp -f /usr/share/biglinux/themes/biglinux/.config/kdeglobals /root/.config/kdeglobals
+		sudo QT_QUICK_BACKEND=software /usr/bin/calamares-manjaro
 
-	#Calamares failed to install
-	if [ "$(grep -w completion /root/.cache/calamares/session.log | grep -v bash-completion | rev | cut -d ":" -f1 | rev | sed 's/^[ \t]*//;s/[ \t]*$//')" != "succeeded" ]; then
-		# if [ "$(grep completion /root/.cache/calamares/session.log | rev | cut -d ":" -f1 | rev | sed 's/^ \+//')" = "failed" ];then
-		user=$(ls /home)
-		cp /root/.cache/calamares/session.log /home/$user/calamares.log
-		chown $user:$user /home/$user/calamares.log
+		#Calamares failed to install
+		if [ "$(grep -w completion /root/.cache/calamares/session.log | grep -v bash-completion | rev | cut -d ":" -f1 | rev | sed 's/^[ \t]*//;s/[ \t]*$//')" != "succeeded" ]; then
+			# if [ "$(grep completion /root/.cache/calamares/session.log | rev | cut -d ":" -f1 | rev | sed 's/^ \+//')" = "failed" ];then
+			user=$(ls /home)
+			cp /root/.cache/calamares/session.log /home/$user/calamares.log
+			chown $user:$user /home/$user/calamares.log
 
-		send() {
-			sudo -u $user curl --data-binary -H "filename: /home/$user/calamares.log" https://filebin.net | tee "/home/$user/transfer.url" | zenity --modal --progress --pulsate --no-cancel --auto-close --text $"Sending, please wait..."
+			send() {
+				sudo -u $user curl --data-binary -H "filename: /home/$user/calamares.log" https://filebin.net | tee "/home/$user/transfer.url" | zenity --modal --progress --pulsate --no-cancel --auto-close --text $"Sending, please wait..."
 
-			if [ -f /usr/bin/falkon ]; then
-				sudo -u $user falkon https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
-			elif [ -f /usr/bin/brave ]; then
-				sudo -u $user brave-browser --new-window --no-sandbox https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
-			fi
-		}
+				if [ -f /usr/bin/falkon ]; then
+					sudo -u $user falkon https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
+				elif [ -f /usr/bin/brave ]; then
+					sudo -u $user brave-browser --new-window --no-sandbox https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
+				fi
+			}
 
-		yad --buttons-layout=center \
-			--width=480 \
-			--button=$"Open":1 \
-			--button=$"Send to the cloud":2 \
-			--button=$"Close":3 \
-			--title=$"calamares LOG" \
-			--text=$"\nDo you want to view or send the installation log file to the cloud?\nGenerate a link to send in support groups.\n"
+			yad --buttons-layout=center \
+				--width=480 \
+				--button=$"Open":1 \
+				--button=$"Send to the cloud":2 \
+				--button=$"Close":3 \
+				--title=$"calamares LOG" \
+				--text=$"\nDo you want to view or send the installation log file to the cloud?\nGenerate a link to send in support groups.\n"
 
-		case $? in
-		1) sudo -u $user kate /home/$user/calamares.log ;;
-		2) send ;;
-		3) echo $"Closing file..." ;;
-		esac
+			case $? in
+			1) sudo -u $user kate /home/$user/calamares.log ;;
+			2) send ;;
+			3) echo $"Closing file..." ;;
+			esac
 
+		fi
 	fi
-fi
+}
+export -f sh_calamares_biglinux_main
+
+sh_calamares_biglinux_main "$@"
