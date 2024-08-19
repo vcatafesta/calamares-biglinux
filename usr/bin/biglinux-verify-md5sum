@@ -1,4 +1,43 @@
-#!/bin/sh
+#!/usr/bin/env bash
+#shellcheck disable=SC2155,SC2034
+#shellcheck source=/dev/null
+
+#  /usr/bin/biglinux-verify-md5sum
+#  Description: Big Store installing programs for BigLinux
+#
+#  Created: 2020/01/11
+#  Altered: 2024/08/18
+#
+#  Copyright (c) 2023-2024, Vilmar Catafesta <vcatafesta@gmail.com>
+#  All rights reserved.
+#
+#  Redistribution and use in source and binary forms, with or without
+#  modification, are permitted provided that the following conditions
+#  are met:
+#  1. Redistributions of source code must retain the above copyright
+#     notice, this list of conditions and the following disclaimer.
+#  2. Redistributions in binary form must reproduce the above copyright
+#     notice, this list of conditions and the following disclaimer in the
+#     documentation and/or other materials provided with the distribution.
+#
+#  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
+#  IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+#  OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+#  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT, INDIRECT,
+#  INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+#  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+#  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+#  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+#  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+#  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+APP="${0##*/}"
+_VERSION_="1.0.0-20240818"
+#
+LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
+[[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
+[[ -f "${LIBRARY}/tinilib.sh" ]] && source "${LIBRARY}/tinilib.sh"
+[[ -f "${LIBRARY}/bstrlib.sh" ]] && source "${LIBRARY}/bstrlib.sh"
 
 #Translation
 LANGUAGE=$LANG:en
@@ -8,52 +47,52 @@ export TEXTDOMAIN=calamares-biglinux
 cd /run/miso/bootmnt/manjaro/x86_64/
 #cd /home/biglinux/x86_64/
 
-rm -f  /tmp/md5sum_big_fail
+rm -f /tmp/md5sum_big_fail
 
 Message=$"Checking the file:"
 Message2=$"Checking for download or USB drive errors, this may take a few minutes..."
 
 (
-echo "10"
-echo "# $Message2 \n\n $Message desktopfs.sfs"
-md5sum --status -c desktopfs.md5
-if [ "$?" != "0" ] ; then
-    echo 1 > /tmp/md5sum_big_fail
-fi
-echo "50"
-echo "# $Message2 \n\n $Message livefs.sfs"
-md5sum --status -c livefs.md5
-if [ "$?" != "0" ] ; then
-    echo 1 > /tmp/md5sum_big_fail
-fi
-echo "60"
-echo "# $Message2 \n\n $Message mhwdfs.sfs"
-md5sum --status -c mhwdfs.md5
-if [ "$?" != "0" ] ; then
-    echo 1 > /tmp/md5sum_big_fail
-fi
-echo "80"
-echo "# $Message2 \n\n $Message rootfs.sfs"
-md5sum --status -c rootfs.md5
-if [ "$?" != "0" ] ; then
-    echo 1 > /tmp/md5sum_big_fail
-fi
+	echo "10"
+	echo "# $Message2 \n\n $Message desktopfs.sfs"
+	md5sum --status -c desktopfs.md5
+	if [ "$?" != "0" ]; then
+		echo 1 >/tmp/md5sum_big_fail
+	fi
+	echo "50"
+	echo "# $Message2 \n\n $Message livefs.sfs"
+	md5sum --status -c livefs.md5
+	if [ "$?" != "0" ]; then
+		echo 1 >/tmp/md5sum_big_fail
+	fi
+	echo "60"
+	echo "# $Message2 \n\n $Message mhwdfs.sfs"
+	md5sum --status -c mhwdfs.md5
+	if [ "$?" != "0" ]; then
+		echo 1 >/tmp/md5sum_big_fail
+	fi
+	echo "80"
+	echo "# $Message2 \n\n $Message rootfs.sfs"
+	md5sum --status -c rootfs.md5
+	if [ "$?" != "0" ]; then
+		echo 1 >/tmp/md5sum_big_fail
+	fi
 ) |
-zenity --auto-close --progress \
-  --title=$"Checking system integrity" \
-  --text="$Message2" \
-  --percentage=0
+	zenity --auto-close --progress \
+		--title=$"Checking system integrity" \
+		--text="$Message2" \
+		--percentage=0
 
 verify=$?
 
-if [ "$verify" = -1 ] || [ "$(cat /tmp/md5sum_big_fail 2>/dev/null)" = "1" ] ; then
-        zenity --error \
-          --text=$"Error found, please download the system again or use another USB drive."
-elif [ "$verify" = 0 ] ; then
-        zenity --info \
-          --text=$"The files are intact."
+if [ "$verify" = -1 ] || [ "$(cat /tmp/md5sum_big_fail 2>/dev/null)" = "1" ]; then
+	zenity --error \
+		--text=$"Error found, please download the system again or use another USB drive."
+elif [ "$verify" = 0 ]; then
+	zenity --info \
+		--text=$"The files are intact."
 else
-        zenity --info \
-          --text=$"Verification canceled."
-        echo 1 > /tmp/md5sum_big_fail
+	zenity --info \
+		--text=$"Verification canceled."
+	echo 1 >/tmp/md5sum_big_fail
 fi
