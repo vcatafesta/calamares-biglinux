@@ -53,26 +53,22 @@ Message2=$"Checking for download or USB drive errors, this may take a few minute
 (
 	echo "10"
 	echo "# $Message2 \n\n $Message desktopfs.sfs"
-	md5sum --status -c desktopfs.md5
-	if [ "$?" != "0" ]; then
+	if ! md5sum --status -c desktopfs.md5; then
 		echo 1 >/tmp/md5sum_big_fail
 	fi
 	echo "50"
 	echo "# $Message2 \n\n $Message livefs.sfs"
-	md5sum --status -c livefs.md5
-	if [ "$?" != "0" ]; then
+	if ! md5sum --status -c livefs.md5; then
 		echo 1 >/tmp/md5sum_big_fail
 	fi
 	echo "60"
 	echo "# $Message2 \n\n $Message mhwdfs.sfs"
-	md5sum --status -c mhwdfs.md5
-	if [ "$?" != "0" ]; then
+	if ! md5sum --status -c mhwdfs.md5; then
 		echo 1 >/tmp/md5sum_big_fail
 	fi
 	echo "80"
 	echo "# $Message2 \n\n $Message rootfs.sfs"
-	md5sum --status -c rootfs.md5
-	if [ "$?" != "0" ]; then
+	if ! md5sum --status -c rootfs.md5; then
 		echo 1 >/tmp/md5sum_big_fail
 	fi
 ) |
@@ -83,17 +79,23 @@ Message2=$"Checking for download or USB drive errors, this may take a few minute
 		--text="$Message2" \
 		--percentage=0
 
-verify=$?
+# Captura o código de saída do zenity
+verify="$?"
 
-if [ "$verify" = -1 ] || [ "$(cat /tmp/md5sum_big_fail 2>/dev/null)" = "1" ]; then
+# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
+content="$(</tmp/md5sum_big_fail 2>/dev/null)"
+
+# Verifica o código de saída e o conteúdo do arquivo
+if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
 	zenity \
 		--error \
 		--text=$"Error found, please download the system again or use another USB drive."
-elif [ "$verify" = 0 ]; then
-	#	zenity \
-	#		--info \
-	#		--text=$"The files are intact."
-	:
+elif [[ "$verify" -eq 0 ]]; then
+	# Mostra uma mensagem por 3 segundos e depois continua
+	zenity \
+		--info \
+		--text=$"The files are intact." \
+		--timeout=3
 else
 	zenity \
 		--info \
