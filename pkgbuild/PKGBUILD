@@ -12,7 +12,7 @@ pkgdesc="Calamares tweaks to BigLinux, like using btrfs+zstd for default"
 source=('git+${url}.git')
 sha256sums=('SKIP')
 makedepends=('git')
-install=${pkgname}.install
+#install=${pkgname}.install
 
 package() {
     # Verify default folder
@@ -37,3 +37,17 @@ package() {
     fi
 }
 
+post_install() {
+  if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
+    #mv -f /usr/bin/calamares /usr/bin/calamares-manjaro
+    #cp /usr/bin/calamares-biglinux /usr/bin/calamares
+    bash /usr/share/biglinux-divert/calamares-biglinux
+  fi
+  rm -f /usr/share/applications/calamares.desktop
+  echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
+}
+
+pre_remove() {
+  mv -f /usr/bin/calamares /usr/bin/calamares-biglinux
+  mv -f /usr/bin/calamares-manjaro /usr/bin/calamares
+}
