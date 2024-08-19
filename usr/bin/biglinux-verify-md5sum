@@ -45,8 +45,6 @@ export TEXTDOMAINDIR="/usr/share/locale"
 export TEXTDOMAIN=calamares-biglinux
 
 cd /run/miso/bootmnt/manjaro/x86_64/
-#cd /home/biglinux/x86_64/
-
 rm -f /tmp/md5sum_big_fail
 
 Message=$"Checking the file:"
@@ -78,7 +76,9 @@ Message2=$"Checking for download or USB drive errors, this may take a few minute
 		echo 1 >/tmp/md5sum_big_fail
 	fi
 ) |
-	zenity --auto-close --progress \
+	zenity \
+		--auto-close \
+		--progress \
 		--title=$"Checking system integrity" \
 		--text="$Message2" \
 		--percentage=0
@@ -86,13 +86,17 @@ Message2=$"Checking for download or USB drive errors, this may take a few minute
 verify=$?
 
 if [ "$verify" = -1 ] || [ "$(cat /tmp/md5sum_big_fail 2>/dev/null)" = "1" ]; then
-	zenity --error \
+	zenity \
+		--error \
 		--text=$"Error found, please download the system again or use another USB drive."
 elif [ "$verify" = 0 ]; then
-	zenity --info \
-		--text=$"The files are intact."
+	#	zenity \
+	#		--info \
+	#		--text=$"The files are intact."
+	:
 else
-	zenity --info \
+	zenity \
+		--info \
 		--text=$"Verification canceled."
 	echo 1 >/tmp/md5sum_big_fail
 fi

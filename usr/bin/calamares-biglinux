@@ -46,13 +46,20 @@ export TEXTDOMAIN=calamares-biglinux
 # md5sum
 if [ "$(ps -e | grep biglinux-verify)" != "" ]; then
 	windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
-	sleep 600 | zenity --attach="$windowID" --width=300 --progress --title=$"Please wait..." --pulsate --no-cancel --auto-close --text $"Checking the integrity of the download and storage device..." &
+	sleep 600 | zenity \
+								--attach="$windowID" \
+								--width=300 \
+								--progress \
+								--title=$"Please wait..." \
+								--pulsate \
+								--no-cancel \
+								--auto-close \
+								--text $"Checking the integrity of the download and storage device..." &
 fi
 
 while [ "$(ps -e | grep biglinux-verify)" != "" ]; do
 	sleep 1
 done
-
 killall zenity
 
 if [ ! -f "/tmp/checksum_biglinux_ok.html" ]; then
@@ -64,7 +71,12 @@ fi
 
 # if the ISO was generated more than 30 days ago, issue ALERT
 if [ "$(echo $(($(date +%s) / 86400)))" -gt "$(($(cat /etc/big-release | grep UNIX_TIMESTAMP= | cut -d "=" -f2) + 30))" ]; then
-	yad --image=emblem-warning --image-on-top --form --width=500 --height=100 --fixed \
+	yad --image=emblem-warning \
+		--image-on-top \
+		--form \
+		--width=500 \
+		--height=100 \
+		--fixed \
 		--align=center \
 		--field=$"<b>Do you want to proceed with the installation of this old version anyway?</b>
     :LBL" \
