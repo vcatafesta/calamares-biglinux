@@ -49,10 +49,12 @@ function biglinux-verify-md5sum_main() {
 	local Verification_canceled=$"Verification canceled."
 	local The_files_are_intact=$"The files are intact."
 	local md5sum_file_fail='/tmp/md5sum_big_fail'
+	local md5sum_filename_fail='/tmp/md5sum_big_filename_fail'
 	local squashfiles=('desktopfs' 'livefs' 'mhwdfs' 'rootfs')
 	local cfile
 	local verify=2
-	local content
+	local contentErrorCode
+	local contentErrorFilename
 	declare -i count=0
 
 	[[ -e "$md5sum_file_fail" ]] && rm -f "$md5sum_file_fail"
@@ -60,7 +62,8 @@ function biglinux-verify-md5sum_main() {
 		(
 			for cfile in "${squashfiles[@]}"; do
 				if ! md5sum --status -c "${cfile}".md5; then
-					echo 1 >"$md5sum_file_fail"
+					echo 1				>"$md5sum_file_fail"
+					echo "$cfile" >"$md5sum_filename_fail"
 					break
 				fi
 				((count+=25))
@@ -81,13 +84,14 @@ function biglinux-verify-md5sum_main() {
 	fi
 
 	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
-	[[ -e "$md5sum_file_fail" ]] && content="$(<$md5sum_file_fail)"
+	[[ -e "$md5sum_file_fail"     ]] && contentErrorCode="$(<$md5sum_file_fail)"
+	[[ -e "$md5sum_filename_fail" ]] && contentErrorFilename="$(<$md5sum_filename_fail)"
 
 	# Verifica o código de saída e o conteúdo do arquivo
-	if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
+	if [[ "$verify" -eq -1 ]] || [[ "$contentErrorCode" == "1" ]]; then
 		zenity \
 			--error \
-			--text=$"Integrity error in file: ${cfile} \n	\
+			--text=$"Integrity error in file: ${contentErrorFilename} \n	\
 \n 1 - Try restarting the installer. \
 \n 2 - Try restarting/rebooting again. \
 \n 3 - Download the system again and/or use another USB drive."
