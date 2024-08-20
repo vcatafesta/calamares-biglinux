@@ -48,35 +48,35 @@ function biglinux-verify-md5sum_main() {
 	local Message2=$"Checking for download or USB drive errors, this may take a few minutes..."
 	local Verification_canceled=$"Verification canceled."
 	local The_files_are_intact=$"The files are intact."
-	local md5sum_file='/tmp/md5sum_big_fail'
+	local md5sum_file_fail='/tmp/md5sum_big_fail'
 	local verify=2
 	local content
 
-	[[ -e "$md5sum_file" ]] && rm -f "$md5sum_file"
+	[[ -e "$md5sum_file_fail" ]] && rm -f "$md5sum_file_fail"
 	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- ; then
 		(
 			#			echo "10"
 			#			echo "# $Message2 \n\n $Message desktopfs.sfs"
 			if ! md5sum --status -c desktopfs.md5; then
-				echo 1 >"$md5sum_file"
+				echo 1 >"$md5sum_file_fail"
 			fi
 			printf "%s\n" "25"
 			printf "%s\n" "# $Message2 \n\n $Message desktopfs.sfs"
 
 			if ! md5sum --status -c livefs.md5; then
-				echo 1 >"$md5sum_file"
+				echo 1 >"$md5sum_file_fail"
 			fi
 			printf "%s\n" "50"
 			printf "%s\n" "# $Message2 \n\n $Message livefs.sfs"
 
 			if ! md5sum --status -c mhwdfs.md5; then
-				echo 1 >"$md5sum_file"
+				echo 1 >"$md5sum_file_fail"
 			fi
 			printf "%s\n" "75"
 			printf "%s\n" "# $Message2 \n\n $Message mhwdfs.sfs"
 
 			if ! md5sum --status -c rootfs.md5; then
-				echo 1 >"$md5sum_file"
+				echo 1 >"$md5sum_file_fail"
 			fi
 			printf "%s\n" "100"
 			printf "%s\n" "# $Message2 \n\n $Message rootfs.sfs"
@@ -95,7 +95,7 @@ function biglinux-verify-md5sum_main() {
 	fi
 
 	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
-	[[ -e "$md5sum_file" ]] && content="$(<$md5sum_file)"
+	[[ -e "$md5sum_file_fail" ]] && content="$(<$md5sum_file_fail)"
 
 	# Verifica o código de saída e o conteúdo do arquivo
 	if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
@@ -117,7 +117,7 @@ function biglinux-verify-md5sum_main() {
 		zenity \
 			--info \
 			--text="$Verification_canceled."
-		echo 1 >$md5sum_file
+		echo 1 >$md5sum_file_fail
 	fi
 }
 export -f biglinux-verify-md5sum_main
