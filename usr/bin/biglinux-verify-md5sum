@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2155,SC2034
+#shellcheck disable=SC2155,SC2034,SC2030,SC2031
 #shellcheck source=/dev/null
 
 #  /usr/bin/biglinux-verify-md5sum
@@ -87,7 +87,10 @@ function biglinux-verify-md5sum_main() {
 	if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
 		zenity \
 			--error \
-			--text=$"Error found\nplease download the system again or use another USB drive."
+			--text=$"Integrity error in file: ${cfile} \n	\
+\n 1 - Try restarting the installer. \
+\n 2 - Try restarting/rebooting again. \
+\n 3 - Download the system again and/or use another USB drive."
 	elif [[ "$verify" -eq 0 ]]; then
 		# Mostra uma mensagem por 3 segundos e depois continua
 		zenity \
