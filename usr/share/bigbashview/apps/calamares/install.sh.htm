@@ -4,14 +4,10 @@
 export TEXTDOMAINDIR="/usr/share/locale"
 export TEXTDOMAIN=calamares-biglinux
 
-
 touch /tmp/biglinux-wait-install
-
 OIFS=$IFS
 IFS=$'\n'
-
 rm -f /tmp/start_calamares
-
 
 if [ "$option" = "btrfs" ]; then
 #     rm -f /tmp/use_disable_fsync
@@ -67,21 +63,20 @@ pacman:
 operations:' > /etc/calamares/modules/packages.conf
     if [ "$remove_packages" != "" ]; then
         echo ' - remove:' >> /etc/calamares/modules/packages.conf
-        
         sed -i '/pacman/s/-Rs/-Rcns/' /lib/calamares/modules/chrootcfg/main.py
         sed -i '/pacman/s/-Rs/-Rcns/' /lib/calamares/modules/packages/main.py
-        
+
         echo $remove_packages | tr -d '\r' > /tmp/packageRemove
         sed -i 's/[ ]\+/ /g' /tmp/packageRemove
         sed -i 's/ /\n/g' /tmp/packageRemove
-        
+
         for package in $(cat /tmp/packageRemove); do
             echo "   - $package" >> /etc/calamares/modules/packages.conf
         done
     fi
+
     if [ "$install_packages" != "" ]; then
         echo ' - install:' >> /etc/calamares/modules/packages.conf
-
         echo  $install_packages | tr -d '\r' > /tmp/packageInstallList
         sed -i 's/[ ]\+/ /g' /tmp/packageInstallList
         sed -i 's/ /\n/g' /tmp/packageInstallList
@@ -119,7 +114,7 @@ needed_only: false
 operations:
  - remove:
         - --cascade' > /etc/calamares/modules/packages.conf
-        
+
         # Checking if the package is installed in the ISO to add the removal
         for pkg_to_remove  in $(cat /tmp/listPkgsRemove); do
             pacman -Q $pkg_to_remove &> /dev/null
@@ -129,7 +124,6 @@ operations:
         done
     fi
 fi
-
 
 # General configuration
 echo '---

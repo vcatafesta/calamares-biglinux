@@ -6,7 +6,7 @@
 #  Description: Big Store installing programs for BigLinux
 #
 #  Created: 2020/01/11
-#  Altered: 2024/08/18
+#  Altered: 2024/08/19
 #
 #  Copyright (c) 2023-2024, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -32,73 +32,96 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 APP="${0##*/}"
-_VERSION_="1.0.0-20240818"
+_VERSION_="1.0.0-20240819"
 #
 LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 [[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
 [[ -f "${LIBRARY}/tinilib.sh" ]] && source "${LIBRARY}/tinilib.sh"
-[[ -f "${LIBRARY}/bstrlib.sh" ]] && source "${LIBRARY}/bstrlib.sh"
 
 #Translation
 LANGUAGE=$LANG:en
 export TEXTDOMAINDIR="/usr/share/locale"
 export TEXTDOMAIN=calamares-biglinux
 
-cd /run/miso/bootmnt/manjaro/x86_64/
-rm -f /tmp/md5sum_big_fail
+function biglinux-verify-md5sum_main() {
+	local Message=$"Checking the file:"
+	local Message2=$"Checking for download or USB drive errors, this may take a few minutes..."
+	local Verification_canceled=$"Verification canceled."
+	local The_files_are_intact=$"The files are intact."
+	local md5sum_file='/tmp/md5sum_big_fail'
+	local verify=2
+	local content
 
-Message=$"Checking the file:"
-Message2=$"Checking for download or USB drive errors, this may take a few minutes..."
+	[[ -e "$md5sum_file" ]] && rm -f "$md5sum_file"
+	cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- && verify="$(biglinux-verify-md5sum_test_files)"
 
-(
-	echo "10"
-	echo "# $Message2 \n\n $Message desktopfs.sfs"
-	if ! md5sum --status -c desktopfs.md5; then
-		echo 1 >/tmp/md5sum_big_fail
+	function biglinux-verify-md5sum_test_files() {
+		(
+			#			echo "10"
+			#			echo "# $Message2 \n\n $Message desktopfs.sfs"
+
+			printf "%s" "10"
+			printf "%s %s \n\n %s %s" "#" "$Message2" "$Message" "desktopfs.sfs"
+			if ! md5sum --status -c desktopfs.md5; then
+				echo 1 >"$md5sum_file"
+			fi
+
+			printf "%s" "50"
+			printf "%s %s \n\n %s %s" "#" "$Message2" "$Message" "livefs.sfs"
+			if ! md5sum --status -c livefs.md5; then
+				echo 1 >"$md5sum_file"
+			fi
+
+			printf "%s" "60"
+			printf "%s %s \n\n %s %s" "#" "$Message2" "$Message" "mhwdfs.sfs"
+			if ! md5sum --status -c mhwdfs.md5; then
+				echo 1 >"$md5sum_file"
+			fi
+
+			printf "%s" "80"
+			printf "%s %s \n\n %s %s" "#" "$Message2" "$Message" "rootfs.sfs"
+			if ! md5sum --status -c rootfs.md5; then
+				echo 1 >"$md5sum_file"
+			fi
+		) |
+			zenity \
+				--auto-close \
+				--progress \
+				--title=$"Checking system integrity" \
+				--text="$Message2" \
+				--percentage=0
+
+		# Captura o código de saída do zenity
+		verify="$?"
+		return "$verify"
+	}
+
+	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
+	[[ -e "$md5sum_file" ]] && content="$(<$md5sum_file)"
+
+	# Verifica o código de saída e o conteúdo do arquivo
+	if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
+		zenity \
+			--error \
+			--text=$"Error found\nplease download the system again or use another USB drive."
+	elif [[ "$verify" -eq 0 ]]; then
+		# Mostra uma mensagem por 3 segundos e depois continua
+		zenity \
+			--info \
+			--text="$The_files_are_intact" \
+			--timeout=3
+	elif [[ "$verify" -eq 2 ]]; then
+		# Mostra uma mensagem por 3 segundos e depois continua
+		zenity \
+			--info \
+			--text=$"Error encountered\nUnable to access files for integrity testing. Try restarting the system/installer."
+	else
+		zenity \
+			--info \
+			--text="$Verification_canceled."
+		echo 1 >$md5sum_file
 	fi
-	echo "50"
-	echo "# $Message2 \n\n $Message livefs.sfs"
-	if ! md5sum --status -c livefs.md5; then
-		echo 1 >/tmp/md5sum_big_fail
-	fi
-	echo "60"
-	echo "# $Message2 \n\n $Message mhwdfs.sfs"
-	if ! md5sum --status -c mhwdfs.md5; then
-		echo 1 >/tmp/md5sum_big_fail
-	fi
-	echo "80"
-	echo "# $Message2 \n\n $Message rootfs.sfs"
-	if ! md5sum --status -c rootfs.md5; then
-		echo 1 >/tmp/md5sum_big_fail
-	fi
-) |
-	zenity \
-		--auto-close \
-		--progress \
-		--title=$"Checking system integrity" \
-		--text="$Message2" \
-		--percentage=0
+}
+export -f biglinux-verify-md5sum_main
 
-# Captura o código de saída do zenity
-verify="$?"
-
-# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
-content="$(</tmp/md5sum_big_fail 2>/dev/null)"
-
-# Verifica o código de saída e o conteúdo do arquivo
-if [[ "$verify" -eq -1 ]] || [[ "$content" == "1" ]]; then
-	zenity \
-		--error \
-		--text=$"Error found, please download the system again or use another USB drive."
-elif [[ "$verify" -eq 0 ]]; then
-	# Mostra uma mensagem por 3 segundos e depois continua
-	zenity \
-		--info \
-		--text=$"The files are intact." \
-		--timeout=3
-else
-	zenity \
-		--info \
-		--text=$"Verification canceled."
-	echo 1 >/tmp/md5sum_big_fail
-fi
+biglinux-verify-md5sum_main "$@"
