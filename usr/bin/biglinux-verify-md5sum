@@ -61,25 +61,25 @@ function biglinux-verify-md5sum_main() {
 				echo 1 >"$md5sum_file"
 			fi
 			printf "%s\n" "25"
-			printf "%s\n" "# $Message2 $Message desktopfs.sfs"
+			printf "%s\n" "# $Message2 \n\n $Message desktopfs.sfs"
 
 			if ! md5sum --status -c livefs.md5; then
 				echo 1 >"$md5sum_file"
 			fi
 			printf "%s\n" "50"
-			printf "%s\n" "# $Message2 $Message livefs.sfs"
+			printf "%s\n" "# $Message2 \n\n $Message livefs.sfs"
 
 			if ! md5sum --status -c mhwdfs.md5; then
 				echo 1 >"$md5sum_file"
 			fi
 			printf "%s\n" "75"
-			printf "%s\n" "# $Message2 $Message mhwdfs.sfs"
+			printf "%s\n" "# $Message2 \n\n $Message mhwdfs.sfs"
 
 			if ! md5sum --status -c rootfs.md5; then
 				echo 1 >"$md5sum_file"
 			fi
 			printf "%s\n" "100"
-			printf "%s\n" "# $Message2 $Message rootfs.sfs"
+			printf "%s\n" "# $Message2 \n\n $Message rootfs.sfs"
 			sleep 1
 
 		) |
