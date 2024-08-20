@@ -53,9 +53,7 @@ function biglinux-verify-md5sum_main() {
 	local content
 
 	[[ -e "$md5sum_file" ]] && rm -f "$md5sum_file"
-	cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- && verify="$(biglinux-verify-md5sum_test_files)"
-
-	function biglinux-verify-md5sum_test_files() {
+	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- ; then
 		(
 			#			echo "10"
 			#			echo "# $Message2 \n\n $Message desktopfs.sfs"
@@ -93,8 +91,7 @@ function biglinux-verify-md5sum_main() {
 
 		# Captura o código de saída do zenity
 		verify="$?"
-		return "$verify"
-	}
+	fi
 
 	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
 	[[ -e "$md5sum_file" ]] && content="$(<$md5sum_file)"
