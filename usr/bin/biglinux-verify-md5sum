@@ -57,7 +57,8 @@ function biglinux-verify-md5sum_main() {
 	local contentErrorFilename
 	declare -i count=0
 
-	[[ -e "$md5sum_file_fail" ]] && rm -f "$md5sum_file_fail"
+	[[ -e "$md5sum_file_fail"     ]] && rm -f "$md5sum_file_fail"
+	[[ -e "$md5sum_filename_fail" ]] && rm -f "$md5sum_filename_fail"
 	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- ; then
 		(
 			for cfile in "${squashfiles[@]}"; do
