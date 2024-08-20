@@ -53,16 +53,16 @@ function biglinux-verify-md5sum_main() {
 	local cfile
 	local verify=2
 	local content
-	local count=0
+	declare -i count=0
 
 	[[ -e "$md5sum_file_fail" ]] && rm -f "$md5sum_file_fail"
 	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&- ; then
 		(
 			for cfile in "${squashfiles[@]}"; do
-				if ! md5sum --status -c ${cfile}.md5; then
+				if ! md5sum --status -c "${cfile}".md5; then
 					echo 1 >"$md5sum_file_fail"
 				fi
-				count+=25
+				((count+=25))
 				printf "%s\n" "$count"
 				printf "%s\n" "# $Message2 \n\n $Message ${cfile}.sfs"
 			done
