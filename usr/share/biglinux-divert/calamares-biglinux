@@ -85,6 +85,20 @@ fi
 EOF
 }
 
+function check_file_type() {
+	local cfile="$1"
+
+	if grep -q 'script' < <(file -i "$cfile"); then
+		echo "script"
+	elif grep -q 'ELF' < <(file -i "$cfile"); then
+		echo "binary"
+	elif grep -q 'executable' < <(file -i "$cfile"); then
+		echo "binary"
+	else
+		echo "other"
+	fi
+}
+
 #if test -e "$f_usr_bin_calamares"; then
 #	if ! grep -q 'shellscript' < <(file -i "$f_usr_bin_calamares"); then
 #		mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
@@ -97,7 +111,12 @@ EOF
 #	chmod +x "$f_usr_bin_calamares"
 #fi
 
-mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
+# verifica se o arquivo /usr/bin/calamares é um binario do pacote calamares do manjaro
+# é possível que já o pacote já tenha sido atualizado então agora é um script do pacote 'calamares-biglinux'
+if [[ "$(check_file_type /usr/bin/calamares)" == 'binary' ]]; then
+	mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
+fi
+
 sh_create_usr_bin_calamares "$@"
 chmod +x "$f_usr_bin_calamares"
 rm -f /usr/share/applications/calamares.desktop
