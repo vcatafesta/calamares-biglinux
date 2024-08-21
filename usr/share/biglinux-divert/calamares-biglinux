@@ -6,7 +6,7 @@
 #  Description: Big Store installing programs for BigLinux
 #
 #  Created: 2020/01/11
-#  Altered: 2024/08/19
+#  Altered: 2024/08/21
 #
 #  Copyright (c) 2023-2024, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -32,7 +32,7 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 APP="${0##*/}"
-_VERSION_="1.0.0-20240819"
+_VERSION_="1.0.0-20240821"
 #
 LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 [[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
@@ -56,12 +56,12 @@ if [[ -n "$(grep development /etc/big-release)" ]]; then
     --auto-close \
     --text $"Updating the Installer..." &
 
-	# # wait for key generation to finish
-	# while [[ -n "$(top -b -d1 n1 | grep gpg$)" ]]; do
-	#  sleep 0.5
-	# done
+  # wait for key generation to finish
+  #while [[ -n "$(top -b -d1 n1 | grep gpg$)" ]]; do
+  #  sleep 0.5
+  #done
 
-	# Aguarda a geração da chave terminar
+  # Aguarda a geração da chave terminar
   while pgrep -x gpg >/dev/null; do
     sleep 0.5
   done
@@ -100,3 +100,4 @@ EOF
 sh_create_usr_bin_calamares "$@"
 chmod +x "$f_usr_bin_calamares"
 rm -f /usr/share/applications/calamares.desktop
+echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
