@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#shellcheck disable=SC2155,SC2034
+#shellcheck disable=SC2155,SC2034,SC1135
 #shellcheck source=/dev/null
 
 #  /usr/share/biglinux-divert/calamares-biglinux
@@ -40,7 +40,7 @@ LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 
 f_usr_bin_calamares="/usr/bin/calamares"
 
-function fn_create_usr_bin_calamares() {
+function sh_create_usr_bin_calamares() {
 	cat >"$f_usr_bin_calamares" <<-EOF
 #!/usr/bin/env bash
 ruscherrelease="$(awk -F'=' '/RELEASE/ {print $2}' /etc/big-release)"
@@ -89,11 +89,11 @@ if test -e "$f_usr_bin_calamares"; then
 	if ! grep -q 'shellscript' < <(file -i "$f_usr_bin_calamares"); then
 		mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
 		#cp /usr/bin/calamares-biglinux "$f_usr_bin_calamares"
-		fn_create_usr_bin_calamares
+		sh_create_usr_bin_calamares "$@"
 		chmod +x "$f_usr_bin_calamares"
 	fi
 else
-	fn_create_usr_bin_calamares
+	sh_create_usr_bin_calamares "$@"
 	chmod +x "$f_usr_bin_calamares"
 fi
 rm -f /usr/share/applications/calamares.desktop
