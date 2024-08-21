@@ -37,13 +37,13 @@ package() {
 }
 
 post_install() {
-	if test -e /usr/bin/calamares; then
-		if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
-			bash /usr/share/biglinux-divert/calamares-biglinux
-		fi
-	else
-		bash /usr/share/biglinux-divert/calamares-biglinux
-	fi
+	bash /usr/share/biglinux-divert/calamares-biglinux
+	rm -f /usr/share/applications/calamares.desktop
+	echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
+}
+
+post_upgrade() {
+	bash /usr/share/biglinux-divert/calamares-biglinux
 	rm -f /usr/share/applications/calamares.desktop
 	echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
 }
