@@ -111,9 +111,9 @@ function check_file_type() {
 #	chmod +x "$f_usr_bin_calamares"
 #fi
 
-# verifica se o arquivo /usr/bin/calamares é um binario do pacote calamares do manjaro
-# é possível que já o pacote já tenha sido atualizado então agora é um script do pacote 'calamares-biglinux'
-if [[ "$(check_file_type /usr/bin/calamares)" == 'binary' ]]; then
+# verifica se o arquivo '/usr/bin/calamares' é um binario do pacote 'calamares' do manjaro
+# é possível que o arquivo já tenha sido substituido/atualizado por um script do pacote 'calamares-biglinux'
+if [[ "$(check_file_type "$f_usr_bin_calamares")" == 'binary' ]]; then
 	mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
 fi
 
