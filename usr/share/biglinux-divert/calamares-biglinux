@@ -38,32 +38,32 @@ LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 [[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
 [[ -f "${LIBRARY}/tinilib.sh" ]] && source "${LIBRARY}/tinilib.sh"
 
-if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
-	mv -f /usr/bin/calamares /usr/bin/calamares-manjaro
-	#cp /usr/bin/calamares-biglinux /usr/bin/calamares
-	cat >/usr/bin/calamares <<-EOF
+f_usr_bin_calamares="/usr/bin/calamares"
+
+function fn_create_usr_bin_calamares() {
+	cat >"$f_usr_bin_calamares" <<-EOF
 #!/usr/bin/env bash
 ruscherrelease="$(awk -F'=' '/RELEASE/ {print $2}' /etc/big-release)"
 if [[ -n "$(grep development /etc/big-release)" ]]; then
 	windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
 	sleep 600 | zenity \
-								--attach="$windowID" \
-								--width=300 \
-								--progress \
-								--title=$"Please wait..." \
-								--pulsate \
-								--no-cancel \
-								--auto-close \
-								--text $"Updating the Installer..." &
+		--attach="$windowID" \
+		--width=300 \
+		--progress \
+		--title=$"Please wait..." \
+		--pulsate \
+		--no-cancel \
+		--auto-close \
+		--text $"Updating the Installer..." &
 
-#	# wait for key generation to finish
-#	while [[ -n "$(top -b -d1 n1 | grep gpg$)" ]]; do
-#		sleep 0.5
-#	done
+	# # wait for key generation to finish
+	# while [[ -n "$(top -b -d1 n1 | grep gpg$)" ]]; do
+	#  sleep 0.5
+	# done
 
 	# Aguarda a geração da chave terminar
-	while pgrep -x gpg > /dev/null; do
-  	sleep 0.5
+	while pgrep -x gpg >/dev/null; do
+		sleep 0.5
 	done
 
 	if ! sudo pacman -Sy calamares-biglinux --noconfirm --needed; then
@@ -83,7 +83,17 @@ if [[ -n "$(grep development /etc/big-release)" ]]; then
 fi
 /usr/bin/calamares-biglinux "$@"
 EOF
+}
 
-	chmod +x /usr/bin/calamares
+if test -e "$f_usr_bin_calamares"; then
+	if ! grep -q 'shellscript' < <(file -i "$f_usr_bin_calamares"); then
+		mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
+		#cp /usr/bin/calamares-biglinux "$f_usr_bin_calamares"
+		fn_create_usr_bin_calamares
+		chmod +x "$f_usr_bin_calamares"
+	fi
+else
+	fn_create_usr_bin_calamares
+	chmod +x "$f_usr_bin_calamares"
 fi
 rm -f /usr/share/applications/calamares.desktop

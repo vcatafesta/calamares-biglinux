@@ -15,38 +15,38 @@ makedepends=('git')
 #install=${pkgname}.install
 
 package() {
-    # Verify default folder
-    if [ -d "${srcdir}/${pkgname}/${pkgname}" ]; then
-        InternalDir="${srcdir}/${pkgname}/${pkgname}"
-    else
-        InternalDir="${srcdir}/${pkgname}"
-    fi
+	# Verify default folder
+	if [ -d "${srcdir}/${pkgname}/${pkgname}" ]; then
+		InternalDir="${srcdir}/${pkgname}/${pkgname}"
+	else
+		InternalDir="${srcdir}/${pkgname}"
+	fi
 
-    # Copy files
-    if [ -d "${InternalDir}/usr" ]; then
-        cp -r "${InternalDir}/usr" "${pkgdir}/"
-    fi
+	# Copy files
+	if [ -d "${InternalDir}/usr" ]; then
+		cp -r "${InternalDir}/usr" "${pkgdir}/"
+	fi
 
-    if [ -d "${InternalDir}/etc" ]; then
-        cp -r "${InternalDir}/etc" "${pkgdir}/"
-    fi
+	if [ -d "${InternalDir}/etc" ]; then
+		cp -r "${InternalDir}/etc" "${pkgdir}/"
+	fi
 
-    if [ -d "${InternalDir}/opt" ]; then
-        cp -r "${InternalDir}/opt" "${pkgdir}/"
-    fi
+	if [ -d "${InternalDir}/opt" ]; then
+		cp -r "${InternalDir}/opt" "${pkgdir}/"
+	fi
 }
 
 post_install() {
-  if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
-    #mv -f /usr/bin/calamares /usr/bin/calamares-manjaro
-    #cp /usr/bin/calamares-biglinux /usr/bin/calamares
-    bash /usr/share/biglinux-divert/calamares-biglinux
-  fi
-  rm -f /usr/share/applications/calamares.desktop
-  echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
+	if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
+		#mv -f /usr/bin/calamares /usr/bin/calamares-manjaro
+		#cp /usr/bin/calamares-biglinux /usr/bin/calamares
+		bash /usr/share/biglinux-divert/calamares-biglinux
+	fi
+	rm -f /usr/share/applications/calamares.desktop
+	echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
 }
 
 pre_remove() {
-  mv -f /usr/bin/calamares /usr/bin/calamares-biglinux
-  mv -f /usr/bin/calamares-manjaro /usr/bin/calamares
+	mv -f /usr/bin/calamares /usr/bin/calamares-biglinux
+	mv -f /usr/bin/calamares-manjaro /usr/bin/calamares
 }
