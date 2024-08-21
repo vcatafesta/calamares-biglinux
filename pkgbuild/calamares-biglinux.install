@@ -1,7 +1,9 @@
 post_install() {
-	if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
-		#mv -f /usr/bin/calamares /usr/bin/calamares-manjaro
-		#cp /usr/bin/calamares-biglinux /usr/bin/calamares
+	if test -e /usr/bin/calamares; then
+		if ! grep -q 'shellscript' < <(file -i /usr/bin/calamares); then
+			bash /usr/share/biglinux-divert/calamares-biglinux
+		fi
+	else
 		bash /usr/share/biglinux-divert/calamares-biglinux
 	fi
 	rm -f /usr/share/applications/calamares.desktop
