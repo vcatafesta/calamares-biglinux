@@ -97,6 +97,7 @@ EOF
 #	chmod +x "$f_usr_bin_calamares"
 #fi
 
+mv -f "$f_usr_bin_calamares" /usr/bin/calamares-manjaro
 sh_create_usr_bin_calamares "$@"
 chmod +x "$f_usr_bin_calamares"
 rm -f /usr/share/applications/calamares.desktop
