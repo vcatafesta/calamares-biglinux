@@ -100,5 +100,4 @@ EOF
 sh_create_usr_bin_calamares "$@"
 chmod +x "$f_usr_bin_calamares"
 rm -f /usr/share/applications/calamares.desktop
-mkdir -p /usr/share/bigbashview/bcc/apps/bigbashview-calamares
-echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/bcc/apps/bigbashview-calamares/install_date
+echo $(($(date +%s) / 86400)) >/usr/share/bigbashview/apps/calamares/install_date
