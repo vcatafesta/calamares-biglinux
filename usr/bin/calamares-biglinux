@@ -175,7 +175,7 @@ We recommend downloading a more recent version.
 				--height=100 \
 				--fixed \
 				--align=center \
-				--text $"ctextReleaseOld" \
+				--text "$ctextReleaseOld" \
 				--button=$"Continue":0 \
 				--button=$"Close":1 \
 				--center \
