@@ -164,6 +164,10 @@ function sh_calamares_biglinux_check_limit() {
 		# Calcula a diferença
 		if ((current_day > release_day + "$grace_time")); then
 			# if the ISO was generated more than 30 days ago, issue ALERT
+			local ctextReleaseOld=$"BigLinux is a system with weekly updates and this version was released more than $days_until_today days ago.
+We recommend downloading a more recent version.
+\nDo you want to proceed with the installation of this old version anyway?"
+			log_err "${red}$ctextReleaseOld"
 			if ! yad --image=emblem-warning \
 				--image-on-top \
 				--form \
@@ -171,9 +175,7 @@ function sh_calamares_biglinux_check_limit() {
 				--height=100 \
 				--fixed \
 				--align=center \
-				--text $"BigLinux is a system with weekly updates and this version was released more than $days_until_today days ago.
-We recommend downloading a more recent version.
-\nDo you want to proceed with the installation of this old version anyway?" \
+				--text $"ctextReleaseOld" \
 				--button=$"Continue":0 \
 				--button=$"Close":1 \
 				--center \
