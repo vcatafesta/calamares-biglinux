@@ -95,7 +95,7 @@ function sh_calamares_biglinux_verify_md5sum() {
 
 	# Verifica o código de saída e o conteúdo do arquivo
 	if [[ "$verify" -eq -1 ]] || [[ "$nErrorCode" == "1" ]]; then
-		log_err "${red}error: md5sum fail, file: ${cyan}$cErrorFilename{reset}"
+		log_err "${red}${APP} - error: md5sum fail, file: ${cyan}$cErrorFilename{reset}"
 		zenity \
 			--error \
 			--text=$"Integrity error in file: ${cErrorFilename} \n	\
@@ -104,7 +104,7 @@ function sh_calamares_biglinux_verify_md5sum() {
 \n 3 - Download the system again and/or use another USB drive."
 		return 1
 	elif [[ "$verify" -eq 0 ]]; then
-		log_msg "${green} md5sum test $The_files_are_intact"
+		log_msg "${green}${APP} - md5sum test $The_files_are_intact"
 		# Mostra uma mensagem por 3 segundos e depois continua
 		zenity \
 			--info \
@@ -113,14 +113,14 @@ function sh_calamares_biglinux_verify_md5sum() {
 		return 0
 	elif [[ "$verify" -eq 2 ]]; then
 		local ctextVerify2=$"Error encountered\nUnable to access files for integrity testing. Try restarting the system/installer."
-		log_msg "${red}error: md5sum test $ctextVerify2"
+		log_msg "${red}${APP} - error: md5sum test $ctextVerify2"
 		# Mostra mensagem que não conseguiu testar os arquivos squashfs
 		zenity \
 			--info \
 			--text="$ctextVerify2"
 		return 1
 	else
-		log_msg "${red} md5sum $Verification_canceled"
+		log_msg "${red}${APP} - md5sum $Verification_canceled"
 		zenity \
 			--info \
 			--text="$Verification_canceled."
@@ -168,7 +168,7 @@ function sh_calamares_biglinux_check_limit() {
 			local ctextReleaseOld=$"BigLinux is a system with weekly updates and this version was released more than $days_until_today days ago.
 We recommend downloading a more recent version.
 \nDo you want to proceed with the installation of this old version anyway?"
-			log_err "${red}$ctextReleaseOld"
+			log_info "${red}${APP} - $ctextReleaseOld"
 			if ! yad --image=emblem-warning \
 				--image-on-top \
 				--form \
@@ -244,7 +244,7 @@ function sh_calamares_biglinux_main() {
 			sed -i 's|pt/|en/|g' /usr/share/calamares/branding/biglinux/show.qml
 		fi
 	else
-		log_err "${red}error: File not found: ${cyan}/usr/share/calamares/branding/biglinux/show.qml${reset}"
+		log_err "${red}${APP} - error: File not found: ${cyan}/usr/share/calamares/branding/biglinux/show.qml${reset}"
 	fi
 
 	if [ ! -f "/etc/calamares/biglinux" ]; then
