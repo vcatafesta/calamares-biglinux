@@ -60,7 +60,7 @@ function sh_calamares_biglinux_verify_md5sum() {
 	[[ -e "$f_md5sum_ErrorCode" ]] && rm -f "$f_md5sum_ErrorCode"
 	[[ -e "$f_md5sum_ErrorFileName" ]] && rm -f "$f_md5sum_ErrorFileName"
 	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&-; then
-		log_msg "${green}$Checking system integrity"
+		log_info "${green}${APP} - Checking system integrity...${reset}"
 		(
 			for cfile in "${squashfiles[@]}"; do
 				if ! md5sum --status -c "${cfile}".md5; then
