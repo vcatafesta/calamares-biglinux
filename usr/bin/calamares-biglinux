@@ -6,7 +6,7 @@
 #  Description: Big Store installing programs for BigLinux
 #
 #  Created: 2020/01/11
-#  Altered: 2024/08/19
+#  Altered: 2024/08/22
 #
 #  Copyright (c) 2023-2024, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -32,17 +32,104 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 APP="${0##*/}"
-_VERSION_="1.0.0-20240819"
+_VERSION_="1.0.0-20240822"
 #
 LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 [[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
 [[ -f "${LIBRARY}/tinilib.sh" ]] && source "${LIBRARY}/tinilib.sh"
 
 #Translation
+LANGUAGE=$LANG:en
 export TEXTDOMAINDIR="/usr/share/locale"
 export TEXTDOMAIN=calamares-biglinux
 
-function sh_calamares_biglinux_main() {
+function sh_calamares_biglinux_verify_md5sum() {
+	local Message=$"Checking the file:"
+	local Message2=$"Checking for download or USB drive errors, this may take a few minutes..."
+	local Verification_canceled=$"Verification canceled."
+	local The_files_are_intact=$"The files are intact."
+	local f_md5sum_ErrorCode='/tmp/md5sum_big_fail'
+	local f_md5sum_ErrorFileName='/tmp/md5sum_ErrorFileName'
+	local squashfiles=('desktopfs' 'livefs' 'mhwdfs' 'rootfs')
+	local cfile
+	local verify
+	local nErrorCode
+	local cErrorFilename
+	declare -i count=0
+
+	[[ -e "$f_md5sum_ErrorCode" ]] && rm -f "$f_md5sum_ErrorCode"
+	[[ -e "$f_md5sum_ErrorFileName" ]] && rm -f "$f_md5sum_ErrorFileName"
+	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&-; then
+		(
+			for cfile in "${squashfiles[@]}"; do
+				if ! md5sum --status -c "${cfile}".md5; then
+					echo 1 >"$f_md5sum_ErrorCode"
+					echo "$cfile" >"$f_md5sum_ErrorFileName"
+					break
+				fi
+				((count += 25))
+				printf "%s\n" "$count"
+				printf "%s\n" "# $Message2 \n\n $Message ${cfile}.sfs"
+			done
+			sleep 1
+		) |
+			zenity \
+				--auto-close \
+				--progress \
+				--title=$"Checking system integrity" \
+				--text="$Message2" \
+				--percentage=0
+
+		# Captura o código de saída do zenity
+		verify="$?"
+	else
+		# não conseguiu entrar no diretorio dos arquivos de squash
+		# provável montagem em outro local ou outro erro
+		verify=2
+	fi
+
+	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
+	[[ -e "$f_md5sum_ErrorCode" ]] && nErrorCode="$(<$f_md5sum_ErrorCode)"
+	[[ -e "$f_md5sum_ErrorFileName" ]] && cErrorFilename="$(<$f_md5sum_ErrorFileName)"
+
+	# Verifica o código de saída e o conteúdo do arquivo
+	if [[ "$verify" -eq -1 ]] || [[ "$nErrorCode" == "1" ]]; then
+		log_err "${red}error: md5sum fail, file: ${cyan}$cErrorFilename{reset}"
+		zenity \
+			--error \
+			--text=$"Integrity error in file: ${cErrorFilename} \n	\
+\n 1 - Try restarting the installer. \
+\n 2 - Try restarting/rebooting again. \
+\n 3 - Download the system again and/or use another USB drive."
+		return 1
+	elif [[ "$verify" -eq 0 ]]; then
+		log_msg "${green} md5sum test $The_files_are_intact"
+		# Mostra uma mensagem por 3 segundos e depois continua
+		zenity \
+			--info \
+			--text="$The_files_are_intact" \
+			--timeout=3
+		return 0
+	elif [[ "$verify" -eq 2 ]]; then
+		local ctextVerify2=$"Error encountered\nUnable to access files for integrity testing. Try restarting the system/installer."
+		log_msg "${red}error: md5sum test $ctextVerify2"
+		# Mostra mensagem que não conseguiu testar os arquivos squashfs
+		zenity \
+			--info \
+			--text="$ctextVerify2"
+		return 1
+	else
+		log_msg "${red} md5sum $Verification_canceled"
+		zenity \
+			--info \
+			--text="$Verification_canceled."
+		echo 1 >$f_md5sum_ErrorCode
+		return 1
+	fi
+}
+export -f sh_calamares_biglinux_verify_md5sum
+
+function sh_calamares_biglinux_check_limit() {
 	local limit="$1"
 	local grace_time="$2"
 	local verify_limit=0
@@ -58,37 +145,6 @@ function sh_calamares_biglinux_main() {
 	else
 		# Valor padrão para verify_limit se não for '--limit'
 		grace_time=30
-	fi
-
-	# md5sum
-	#if [ "$(ps -e | grep biglinux-verify)" != "" ]; then
-	if pgrep -x "biglinux-verify" >/dev/null; then
-		windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
-		sleep 600 | zenity \
-			--attach="$windowID" \
-			--width=300 \
-			--progress \
-			--title=$"Please wait..." \
-			--pulsate \
-			--no-cancel \
-			--auto-close \
-			--text $"Checking the integrity of the download and storage device..." &
-	fi
-	#while [ "$(ps -e | grep biglinux-verify)" != "" ]; do
-	#	sleep 1
-	#done
-	while pgrep -x "biglinux-verify" >/dev/null; do
-		sleep 1
-	done
-	killall zenity
-
-	# Verifica se o arquivo de verificação de checksum não existe
-	if [[ ! -f "/tmp/checksum_biglinux_ok.html" ]]; then
-		# Executa a verificação de MD5
-		/usr/bin/biglinux-verify-md5sum
-
-		# Se o arquivo de falha foi criado, sai com erro
-		[[ -f "/tmp/md5sum_big_fail" ]] && { exit 1; }
 	fi
 
 	# verifica se foi definido um limite como parametro
@@ -124,25 +180,67 @@ function sh_calamares_biglinux_main() {
 			fi
 		fi
 	fi
+}
+export -f sh_calamares_biglinux_check_limit
 
-	# disable swap on disk
-	for diskswap in $(blkid | grep 'TYPE="swap"' | grep -v zram | cut -f1 -d:); do
+function sh_calamares_biglinux_wait_verify_md5sum() {
+	# aguarda o teste com md5sum
+	if pgrep -x "biglinux-verify" >/dev/null; then
+		windowID="$(xprop -root '\t$0' _NET_ACTIVE_WINDOW | cut -f 2)"
+		sleep 600 | zenity \
+			--attach="$windowID" \
+			--width=300 \
+			--progress \
+			--title=$"Please wait..." \
+			--pulsate \
+			--no-cancel \
+			--auto-close \
+			--text $"Checking the integrity of the download and storage device..." &
+	fi
+	while pgrep -x "biglinux-verify" >/dev/null; do
+		sleep 1
+	done
+	killall zenity
+}
+export -f sh_calamares_biglinux_wait_verify_md5sum
+
+function sh_calamares_biglinux_main() {
+	local limit="$1"
+	local grace_time="$2"
+
+	if [[ "$limit" == '--limit' ]]; then
+		sh_calamares_biglinux_check_limit "$limit" "$grace_time"
+	fi
+
+	sh_calamares_biglinux_wait_verify_md5sum
+
+	# Verifica se o arquivo de verificação de checksum não existe
+	if [[ ! -f "/tmp/checksum_biglinux_ok.html" ]]; then
+		# Executa a verificação de MD5
+		if ! sh_calamares_biglinux_verify_md5sum; then
+			exit 1
+		fi
+	fi
+
+	# desabilita a troca/swap no(s) disco(s)
+	for diskswap in $(awk -F: '/TYPE="swap"/ && $0 !~ /zram/ {print $1}' <<<$(blkid)); do
 		swapoff $diskswap
 	done
 
-	if [ "${LANG:0:2}" = "pt" ]; then
-		sed -i 's|pt/|pt/|g' /usr/share/calamares/branding/biglinux/show.qml
-	elif [ "${LANG:0:2}" = "es" ]; then
-		sed -i 's|pt/|es/|g' /usr/share/calamares/branding/biglinux/show.qml
-
+	if test -e /usr/share/calamares/branding/biglinux/show.qml; then
+		if [ "${LANG:0:2}" = "pt" ]; then
+			sed -i 's|pt/|pt/|g' /usr/share/calamares/branding/biglinux/show.qml
+		elif [ "${LANG:0:2}" = "es" ]; then
+			sed -i 's|pt/|es/|g' /usr/share/calamares/branding/biglinux/show.qml
+		else
+			sed -i 's|pt/|en/|g' /usr/share/calamares/branding/biglinux/show.qml
+		fi
 	else
-		sed -i 's|pt/|en/|g' /usr/share/calamares/branding/biglinux/show.qml
+		log_err "${red}error: File not found: ${cyan}/usr/share/calamares/branding/biglinux/show.qml${reset}"
 	fi
 
 	if [ ! -f "/etc/calamares/biglinux" ]; then
-
 		# Simplify welcome
-
 		echo '---
 showSupportUrl:         false
 showKnownIssuesUrl:     false
@@ -335,7 +433,7 @@ sequence:
         - btrfs-fix
         - umount
     - show:
-        - finished   
+        - finished
 
 branding: biglinux
 
@@ -348,7 +446,6 @@ disable-cancel-during-exec: false
 quit-at-end: false' >/etc/calamares/settings.conf
 
 		touch /etc/calamares/biglinux
-
 	fi
 
 	#disable pacman-key populate
@@ -356,7 +453,7 @@ quit-at-end: false' >/etc/calamares/settings.conf
 	sed -i '/self.populate_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
 
 	#save EFI partitions
-	rm -f /tmp/efi-partitions
+	[[ -e /tmp/efi-partitions ]] && rm -f /tmp/efi-partitions
 	mkdir -p /boot/efi
 
 	DEVICE_LIVE_BOOT_TMP="$(readlink -f "$(df -h /run/miso/bootmnt/ | awk '{ print $1 }' | grep '/dev/')" | sed 's|/dev/||'g)"
@@ -373,7 +470,6 @@ quit-at-end: false' >/etc/calamares/settings.conf
 			echo "$i" >>/tmp/efi-partitions
 		fi
 		umount -l /boot/efi
-
 	done
 
 	# Umount partitions
