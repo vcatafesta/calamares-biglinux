@@ -247,7 +247,7 @@ function sh_calamares_biglinux_main() {
 		log_err "${red}${APP} - error: File not found: ${cyan}/usr/share/calamares/branding/biglinux/show.qml${reset}"
 	fi
 
-	if [ ! -f "/etc/calamares/biglinux" ]; then
+	if [[ ! -f "/etc/calamares/biglinux" ]]; then
 		# Simplify welcome
 		echo '---
 showSupportUrl:         false
@@ -456,84 +456,66 @@ quit-at-end: false' >/etc/calamares/settings.conf
 		touch /etc/calamares/biglinux
 	fi
 
-	#disable pacman-key populate
-	sed -i '/init_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
-	sed -i '/self.populate_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
+	# Disable pacman-key populate
+	sed -i -e '/init_keyring/s/^/#/' -e '/self.populate_keyring/s/^/#/' /usr/lib/calamares/modules/postcfg/main.py
 
 	#save EFI partitions
-	[[ -e /tmp/efi-partitions ]] && rm -f /tmp/efi-partitions
-	mkdir -p /boot/efi
+	rm -f /tmp/efi-partitions >/dev/null 2>&-
+	mkdir -p /boot/efi >/dev/null 2>&-
 
 	DEVICE_LIVE_BOOT_TMP="$(readlink -f "$(df -h /run/miso/bootmnt/ | awk '{ print $1 }' | grep '/dev/')" | sed 's|/dev/||'g)"
-	if [ "$(echo "$DEVICE_LIVE_BOOT_TMP" | grep dm)" != "" ]; then
+	if [[ "$(echo "$DEVICE_LIVE_BOOT_TMP" | grep dm)" != "" ]]; then
 		DEVICE_LIVE_BOOT="$(ls /sys/block/${DEVICE_LIVE_BOOT_TMP}/slaves | sed 's|[0-9]||g')"
 	else
 		DEVICE_LIVE_BOOT="$DEVICE_LIVE_BOOT_TMP"
 	fi
 
-	for i in $(LANGUAGE=C fdisk -l | grep -e "EFI System" -e "FAT" | cut -f1 -d" " | grep -v "$DEVICE_LIVE_BOOT"); do
-		umount -l /boot/efi
-		mount "$i" /boot/efi
+	for i in $(LC_ALL=C fdisk -l | grep -e "EFI System" -e "FAT" | cut -f1 -d" " | grep -v "$DEVICE_LIVE_BOOT"); do
+		umount -l /boot/efi >/dev/null 2>&-
+		mount "$i" /boot/efi >/dev/null 2>&-
 		if [ -d /boot/efi/EFI ]; then
 			echo "$i" >>/tmp/efi-partitions
 		fi
-		umount -l /boot/efi
+		umount -l /boot/efi >/dev/null 2>&-
 	done
 
 	# Umount partitions
 	for i in $(blkid | grep -v 'TYPE="swap"' | grep -v 'TYPE="squashfs"' | grep -v '^/dev/sr0' | cut -f1 -d":"); do
-		umount "$i"
+		umount "$i" >/dev/null 2>&-
 	done
 
 	# boot EFI without partition EFI
-	if [ -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" = "" ]; then
+	if [[ -d /sys/firmware/efi ]] && [[ "$(cat /tmp/efi-partitions)" = "" ]]; then
 		LIVEBOOT=EFI
 		PARTITION=LEGACY
-
 		TEXT_01=$"Do you want to proceed with the installation in EFI mode?"
 		TEXT_02=$"The current boot is using <span color='#CC2222'>EFI</span> mode, but I did not find any EFI partition on this computer.
 
-If this computer already has another system installed and you intend 
-to keep it installed, you will probably need to change the 
-configuration in the BIOS to boot in Legacy mode, also 
+If this computer already has another system installed and you intend
+to keep it installed, you will probably need to change the
+configuration in the BIOS to boot in Legacy mode, also
 called BIOS mode."
-		yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
-			--align=center \
-			--field="<b>$TEXT_01</b>
-:LBL" \
-			--text "$TEXT_02
-" \
-			--button=$"Continue"!gtk-apply:0 \
-			--button=$"Close"!gtk-cancel:1 \
-			--center --on-top --borders=20 --title=$"Install the system" \
-			--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
-
-		if [ "$?" = "1" ]; then
+		if ! yad	--image=drive-harddisk --image-on-top --form \
+			--width=500 --height=100 --fixed	--align=center \
+			--field="<b>$TEXT_01</b>:LBL"			--text "$TEXT_02"	--button=$"Continue"!gtk-apply:0 \
+			--button=$"Close"!gtk-cancel:1		--center					--on-top	--borders=20 \
+			--title=$"Install the system"			--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"; then
 			exit
 		fi
-	fi
-
 	# legacy boot and EFI partition
-	if [ ! -d /sys/firmware/efi ] && [ "$(cat /tmp/efi-partitions)" != "" ]; then
+	elif [[ ! -d /sys/firmware/efi ]] && [[ "$(cat /tmp/efi-partitions)" != "" ]]; then
 		LIVEBOOT=LEGACY
 		PARTITION=EFI
 		TEXT_03=$"Do you want to proceed with the installation in Legacy/BIOS mode?"
-		TEXT_04=$"The current boot is using <span color='#CC2222'>Legacy/BIOS</span> mode, but I found at least one EFI partition on this computer. 
+		TEXT_04=$"The current boot is using <span color='#CC2222'>Legacy/BIOS</span> mode, but I found at least one EFI partition on this computer.
 
-For the installation to be successful, you will probably need to 
+For the installation to be successful, you will probably need to
 change the configuration in the BIOS to boot in EFI or UEFI mode."
-		yad --image=drive-harddisk --image-on-top --form --width=500 --height=100 --fixed \
-			--align=center \
-			--field="<b>$TEXT_03</b>
-:LBL" \
-			--text "$TEXT_04
-" \
-			--button=$"Continue"!gtk-apply:0 \
-			--button=$"Close"!gtk-cancel:1 \
-			--center --on-top --borders=20 --title=$"Install the system" \
-			--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"
-
-		if [ "$?" = "1" ]; then
+		if ! yad 	--image=drive-harddisk 					--image-on-top 		--form  \
+							--width=500 										--height=100 			--fixed --align=center \
+							--field="<b>$TEXT_03</b>:LBL" 	--text "$TEXT_04"	--button=$"Continue"!gtk-apply:0 \
+							--button=$"Close"!gtk-cancel:1	--center --on-top	--borders=20 \
+							--title=$"Install the system" 	--window-icon="/usr/share/icons/hicolor/scalable/apps/icon-big-hd-install.svg"; then
 			exit
 		fi
 	fi
@@ -541,31 +523,39 @@ change the configuration in the BIOS to boot in EFI or UEFI mode."
 	rm -f /tmp/start_calamares
 
 	cd /usr/share/bigbashview/apps/calamares/
-	bigbashview -s 1100x600 -n $"Install System" -p bbv-calamares -c transparent -w frameless index.html
+	bigbashview \
+		-s 1100x600 \
+		-n $"Install System" \
+		-p bbv-calamares \
+		-c transparent \
+		-w frameless \
+		index.html
 
 	# Start calamares
-	if [ -e "/tmp/start_calamares" ]; then
-		cp -f /usr/share/biglinux/themes/biglinux/.config/kdeglobals /root/.config/kdeglobals
+	if [[ -e "/tmp/start_calamares" ]]; then
+		if [[ -e /usr/share/biglinux/themes/biglinux/.config/kdeglobals ]]; then
+			cp -f /usr/share/biglinux/themes/biglinux/.config/kdeglobals /root/.config/kdeglobals
+		fi
 		sudo QT_QUICK_BACKEND=software /usr/bin/calamares-manjaro
 
 		#Calamares failed to install
-		if [ "$(grep -w completion /root/.cache/calamares/session.log | grep -v bash-completion | rev | cut -d ":" -f1 | rev | sed 's/^[ \t]*//;s/[ \t]*$//')" != "succeeded" ]; then
+		if [[ "$(grep -w completion /root/.cache/calamares/session.log | grep -v bash-completion | rev | cut -d ":" -f1 | rev | sed 's/^[ \t]*//;s/[ \t]*$//')" != "succeeded" ]]; then
 			# if [ "$(grep completion /root/.cache/calamares/session.log | rev | cut -d ":" -f1 | rev | sed 's/^ \+//')" = "failed" ];then
 			user=$(ls /home)
 			cp /root/.cache/calamares/session.log /home/$user/calamares.log
 			chown $user:$user /home/$user/calamares.log
 
-			send() {
+			function send() {
 				sudo -u $user curl --data-binary -H "filename: /home/$user/calamares.log" https://filebin.net | tee "/home/$user/transfer.url" | zenity --modal --progress --pulsate --no-cancel --auto-close --text $"Sending, please wait..."
-
-				if [ -f /usr/bin/falkon ]; then
+				if [[ -f /usr/bin/falkon ]]; then
 					sudo -u $user falkon https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
-				elif [ -f /usr/bin/brave ]; then
+				elif [[ -f /usr/bin/brave ]]; then
 					sudo -u $user brave-browser --new-window --no-sandbox https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
 				fi
 			}
 
-			yad --buttons-layout=center \
+			yad \
+				--buttons-layout=center \
 				--width=480 \
 				--button=$"Open":1 \
 				--button=$"Send to the cloud":2 \
@@ -578,7 +568,6 @@ change the configuration in the BIOS to boot in EFI or UEFI mode."
 			2) send ;;
 			3) echo $"Closing file..." ;;
 			esac
-
 		fi
 	fi
 }
