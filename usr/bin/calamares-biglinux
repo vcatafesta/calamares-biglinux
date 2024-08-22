@@ -155,6 +155,9 @@ function sh_calamares_biglinux_check_limit() {
 		# Obtém o timestamp do arquivo, também em dias desde a época UNIX
 		release_day=$(grep 'UNIX_TIMESTAMP=' /etc/big-release | cut -d '=' -f2)
 
+		# dias passados desde instalacao
+		days_until_today=$(((current_day - release_day)))
+
 		# Calcula a diferença
 		if ((current_day > release_day + "$grace_time")); then
 			# if the ISO was generated more than 30 days ago, issue ALERT
@@ -167,7 +170,7 @@ function sh_calamares_biglinux_check_limit() {
 				--align=center \
 				--field=$"<b>Do you want to proceed with the installation of this old version anyway?</b>
     :LBL" \
-				--text $"BigLinux is a system with weekly updates and this version was released more than $release_day days ago.\nWe recommend downloading a more recent version.
+				--text $"BigLinux is a system with weekly updates and this version was released more than $days_until_today days ago.\nWe recommend downloading a more recent version.
     " \
 				--button=$"Continue":0 \
 				--button=$"Close":1 \
