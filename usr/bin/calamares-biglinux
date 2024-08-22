@@ -172,8 +172,8 @@ function sh_calamares_biglinux_check_limit() {
 				--fixed \
 				--align=center \
 				--text $"BigLinux is a system with weekly updates and this version was released more than $days_until_today days ago.
-\nWe recommend downloading a more recent version.
-\n\nDo you want to proceed with the installation of this old version anyway?" \
+We recommend downloading a more recent version.
+\nDo you want to proceed with the installation of this old version anyway?" \
 				--button=$"Continue":0 \
 				--button=$"Close":1 \
 				--center \
