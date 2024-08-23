@@ -44,12 +44,19 @@ function sh_calamares_biglinux_config() {
 	export TEXTDOMAINDIR="/usr/share/locale"
 	export TEXTDOMAIN=calamares-biglinux
 	#
+	declare -g public_verify_local=0
+	declare -g local_path_iso='/run/miso/bootmnt/manjaro/x86_64/'
+	declare -g path_iso='/run/miso/bootmnt/manjaro/x86_64/'
+	declare -g Information=$"Informação"
 	declare -g Message=$'Verificando o arquivo:'
 	declare -g Message2=$'Verificando erros de download ou de unidade USB. Isso pode levar alguns minutos...'
 	declare -g Verification_canceled=$'Verificação canceleda.'
 	declare -g The_files_are_intact=$'Os arquivos estão intactos.'
 	declare -g Checking_system_integrity=$'Verificando a integridade do sistema...'
-	declare -g ctextVerify2=$'Erro encontrado\nNão é possível acessar arquivos para teste de integridade. Tente reiniciar o sistema/instalador.'
+	declare -g ctextVerify2=$"ERRO de acesso encontrado ao executar o instalador!
+Não é possível acessar arquivos para teste de integridade em: $path_iso
+Está rodando o instalador numa ISO live?
+Se sim, tente reiniciar o sistema/instalador."
 	declare -g Continue=$'Continuar'
 	declare -g Close=$'Fechar'
 	declare -g Open=$'Abrir'
@@ -115,128 +122,64 @@ function sh_calamares_biglinux_get_timezone() {
 	export LANG
 	source /usr/bin/big-locale-config "$LANGUAGE"
 }
-
-function sh_calamares_biglinux_send() {
-	sudo -u "$user" \
-		curl --data-binary \
-		-H "filename: /home/$user/calamares.log" https://filebin.net |
-		tee "/home/$user/transfer.url" |
-		zenity \
-			--modal \
-			--progress \
-			--pulsate \
-			--no-cancel \
-			--auto-close \
-			--text "${Sending_please_wait}"
-
-	if [[ -f /usr/bin/falkon ]]; then
-		#					sudo -u $user falkon https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
-		sudo -u "$user" falkon https://filebin.net/"$(awk -F'"' '/"id": "/ {print $4}' "/home/$user/transfer.url")"
-	elif [[ -f /usr/bin/brave ]]; then
-		#					sudo -u $user brave-browser --new-window --no-sandbox https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
-		sudo -u "$user" brave-browser --new-window --no-sandbox https://filebin.net/"$(awk -F'"' '/"id": "/ {print $4}' "/home/$user/transfer.url")"
-	fi
-}
-export -f sh_calamares_biglinux_send
-
-function sh_calamares_biglinux_verify_md5sum() {
-	local f_md5sum_ErrorCode='/tmp/md5sum_big_fail'
-	local f_md5sum_ErrorFileName='/tmp/md5sum_ErrorFileName'
-	local squashfiles=('desktopfs' 'livefs' 'mhwdfs' 'rootfs')
-	local cfile
-	local verify
-	local nErrorCode
-	local cErrorFilename
-	declare -i count=0
-
-	[[ -e "$f_md5sum_ErrorCode" ]] && rm -f "$f_md5sum_ErrorCode"
-	[[ -e "$f_md5sum_ErrorFileName" ]] && rm -f "$f_md5sum_ErrorFileName"
-	if cd /run/miso/bootmnt/manjaro/x86_64/ >/dev/null 2>&-; then
-		log_info "${green}${APP} - ${Checking_system_integrity}${reset}"
-		(
-			for cfile in "${squashfiles[@]}"; do
-				if ! md5sum --status -c "${cfile}".md5; then
-					echo 1 >"$f_md5sum_ErrorCode"
-					echo "$cfile" >"$f_md5sum_ErrorFileName"
-					break
-				fi
-				((count += 25))
-				printf "%s\n" "$count"
-				printf "%s\n" "# $Message2 \n\n $Message ${cfile}.sfs"
-			done
-			sleep 1
-		) |
-			zenity \
-				--auto-close \
-				--progress \
-				--title="$Checking_system_integrity" \
-				--text="$Message2" \
-				--percentage=0
-
-		# Captura o código de saída do zenity
-		verify="$?"
-	else
-		# não conseguiu entrar no diretorio dos arquivos de squash
-		# provável montagem em outro local ou outro erro
-		verify=2
-	fi
-
-	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
-	[[ -e "$f_md5sum_ErrorCode" ]] && nErrorCode="$(<$f_md5sum_ErrorCode)"
-	[[ -e "$f_md5sum_ErrorFileName" ]] && cErrorFilename="$(<$f_md5sum_ErrorFileName)"
-
-	# Verifica o código de saída e o conteúdo do arquivo
-	if [[ "$verify" -eq -1 ]] || [[ "$nErrorCode" == "1" ]]; then
-		log_err "${red}${APP} - error: md5sum fail, file: ${cyan}$cErrorFilename{reset}"
-		zenity \
-			--error \
-			--text=$"Integrity error in file: ${cErrorFilename} \n	\
-\n 1 - Try restarting the installer. \
-\n 2 - Try restarting/rebooting again. \
-\n 3 - Download the system again and/or use another USB drive."
-		return 1
-	elif [[ "$verify" -eq 0 ]]; then
-		log_msg "${green}${APP} - md5sum test $The_files_are_intact"
-		# Mostra uma mensagem por 3 segundos e depois continua
-		zenity \
-			--info \
-			--text="$The_files_are_intact" \
-			--timeout=3
-		return 0
-	elif [[ "$verify" -eq 2 ]]; then
-		log_msg "${red}${APP} - error: md5sum test $ctextVerify2"
-		# Mostra mensagem que não conseguiu testar os arquivos squashfs
-		zenity \
-			--info \
-			--text="$ctextVerify2"
-		return 1
-	else
-		log_msg "${red}${APP} - md5sum $Verification_canceled"
-		zenity \
-			--info \
-			--text="$Verification_canceled."
-		echo 1 >$f_md5sum_ErrorCode
-		return 1
-	fi
-}
-export -f sh_calamares_biglinux_verify_md5sum
+export -f sh_calamares_biglinux_get_timezone
 
 function sh_calamares_biglinux_check_limit() {
-	local limit="$1"
-	local grace_time="$2"
+	#	local param_limit="$1"
+	#	local grace_time="$2"
+	local param_limit
+	local grace_time=30
 	local verify_limit=0
+	local param_local
 
-	# Verifica se o parâmetro é '--limit'
-	if [[ "$limit" == '--limit' ]]; then
+	while [[ $# -gt 0 ]]; do
+		case $1 in
+		--limit)
+			param_limit="$1"
+			grace_time="$2"
+			verify_limit=1
+			shift # past argument
+			shift # past value
+			;;
+		--local)
+			param_local="$1"
+			local_path_iso="$2"
+			public_verify_local=1
+			shift # past argument
+			shift # past value
+			;;
+		*)
+			shift # unknown option
+			;;
+		esac
+	done
+
+	# Testa se o parâmetro --local foi fornecido e se o valor é um diretório válido
+	if [[ $public_verify_local -eq 1 ]]; then
+	  if [[ -n "$local_path_iso" ]]; then
+	    if [[ ! -d "$local_path_iso" ]]; then
+	    	local_path_iso="$path_iso"
+	    else
+	    	path_iso="$local_path_iso"
+	    fi
+	  else
+    	local_path_iso="$path_iso"
+	  fi
+	fi
+
+	# se é para testar localmente os arquivos, desnecessário mostar exibir mensagem de limit, se caso
+	if ((public_verify_local)); then
+		return
+	fi
+
+	# Verifica se tem parâmetro '--limit'
+	if [[ "$param_limit" == '--limit' ]]; then
 		verify_limit=1
 
 		# Verifica se grace_time é um número válido
 		if [[ ! "$grace_time" =~ ^-?[0-9]+$ ]]; then
 			grace_time=30 # Define um valor padrão se não for um número válido
 		fi
-	else
-		# Valor padrão para verify_limit se não for '--limit'
-		grace_time=30
 	fi
 
 	# verifica se foi definido um limite como parametro
@@ -282,6 +225,111 @@ Recomendamos baixar uma versão mais recente.
 }
 export -f sh_calamares_biglinux_check_limit
 
+function sh_calamares_biglinux_send() {
+	sudo -u "$user" \
+		curl --data-binary \
+		-H "filename: /home/$user/calamares.log" https://filebin.net |
+		tee "/home/$user/transfer.url" |
+		zenity \
+			--modal \
+			--progress \
+			--pulsate \
+			--no-cancel \
+			--auto-close \
+			--text "${Sending_please_wait}"
+
+	if [[ -e /usr/bin/falkon ]]; then
+		#					sudo -u $user falkon https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
+		sudo -u "$user" falkon https://filebin.net/"$(awk -F'"' '/"id": "/ {print $4}' "/home/$user/transfer.url")"
+	elif [[ -e /usr/bin/brave ]]; then
+		#					sudo -u $user brave-browser --new-window --no-sandbox https://filebin.net/$(cat "/home/$user/transfer.url" | grep '"id": "' | cut -f4 -d'"')
+		sudo -u "$user" brave-browser --new-window --no-sandbox https://filebin.net/"$(awk -F'"' '/"id": "/ {print $4}' "/home/$user/transfer.url")"
+	fi
+}
+export -f sh_calamares_biglinux_send
+
+function sh_calamares_biglinux_verify_md5sum() {
+	local f_md5sum_ErrorCode='/tmp/md5sum_big_fail'
+	local f_md5sum_ErrorFileName='/tmp/md5sum_ErrorFileName'
+	local squashfiles=('desktopfs' 'livefs' 'mhwdfs' 'rootfs')
+	local cfile
+	local verify
+	local nErrorCode
+	local cErrorFilename
+	declare -i count=0
+
+	[[ -e "$f_md5sum_ErrorCode" ]] && rm -f "$f_md5sum_ErrorCode"
+	[[ -e "$f_md5sum_ErrorFileName" ]] && rm -f "$f_md5sum_ErrorFileName"
+	if cd "$path_iso" >/dev/null 2>&-; then
+		log_info "${green}${APP} - ${Checking_system_integrity}${reset}"
+		(
+			for cfile in "${squashfiles[@]}"; do
+				if ! md5sum --status -c "${cfile}".md5; then
+					echo 1 >"$f_md5sum_ErrorCode"
+					echo "$cfile" >"$f_md5sum_ErrorFileName"
+					break
+				fi
+				((count += 25))
+				printf "%s\n" "$count"
+				printf "%s\n" "# $Message2 \n\n $Message ${cfile}.sfs"
+			done
+			sleep 1
+		) |
+			zenity \
+				--auto-close \
+				--progress \
+				--title="$Checking_system_integrity" \
+				--text="$Message2" \
+				--percentage=0
+
+		# Captura o código de saída do zenity
+		verify="$?"
+	else
+		# não conseguiu entrar no diretorio dos arquivos de squash
+		# provável montagem em outro local ou outro erro
+		verify=2
+	fi
+
+	# Lê o conteúdo do arquivo /tmp/md5sum_big_fail
+	[[ -e "$f_md5sum_ErrorCode" ]] && nErrorCode="$(<$f_md5sum_ErrorCode)"
+	[[ -e "$f_md5sum_ErrorFileName" ]] && cErrorFilename="${path_iso}/$(<$f_md5sum_ErrorFileName).sfs"
+
+	# Verifica o código de saída e o conteúdo do arquivo
+	if [[ "$verify" -eq -1 ]] || [[ "$nErrorCode" == "1" ]]; then
+		log_err "${red}${APP} - error: md5sum fail, file: ${cyan}$cErrorFilename${reset}"
+		zenity \
+			--error \
+			--text=$"Erro de integridade no arquivo: ${cErrorFilename} \n \
+\n 1 - Tente reiniciar o instalador. \
+\n 2 - Tente reiniciar/reiniciar novamente. \
+\n 3 - Baixe o sistema novamente e/ou use outro drive USB."
+		return 1
+	elif [[ "$verify" -eq 0 ]]; then
+		# Mostra uma mensagem por 3 segundos e depois continua instalação
+		log_msg "${green}${APP} - md5sum test $The_files_are_intact"
+		zenity \
+			--info \
+			--text="$The_files_are_intact" \
+			--timeout=3
+		return 0
+	elif [[ "$verify" -eq 2 ]]; then
+		# Mostra mensagem que não conseguiu testar os arquivos squashfs
+		log_msg "${red}${APP} - error: md5sum test $ctextVerify2"
+		zenity \
+			--info \
+			--text="$ctextVerify2"
+		return 1
+	else
+		log_msg "${red}${APP} - md5sum $Verification_canceled"
+		zenity \
+			--info \
+			--text="$Verification_canceled."
+		echo 1 >$f_md5sum_ErrorCode
+		return 1
+	fi
+}
+export -f sh_calamares_biglinux_verify_md5sum
+
 function sh_calamares_biglinux_wait_verify_md5sum() {
 	# aguarda o teste com md5sum
 	if pgrep -x "biglinux-verify" >/dev/null; then
@@ -304,23 +352,23 @@ function sh_calamares_biglinux_wait_verify_md5sum() {
 export -f sh_calamares_biglinux_wait_verify_md5sum
 
 function sh_calamares_biglinux_main() {
-	local limit="$1"
-	local grace_time="$2"
+	local params="$@"
 
 	sh_calamares_biglinux_get_timezone
-
-	if [[ "$limit" == '--limit' ]]; then
-		sh_calamares_biglinux_check_limit "$limit" "$grace_time"
-	fi
-
+	sh_calamares_biglinux_check_limit "$@"
 	sh_calamares_biglinux_wait_verify_md5sum
 
 	# Verifica se o arquivo de verificação de checksum não existe
-	if [[ ! -f "/tmp/checksum_biglinux_ok.html" ]]; then
+	if [[ ! -e "/tmp/checksum_biglinux_ok.html" ]]; then
 		# Executa a verificação de MD5
 		if ! sh_calamares_biglinux_verify_md5sum; then
 			exit 1
 		fi
+	fi
+
+	# somente testar o md5sum dos arquivos? então encerra o instalador
+	if ((public_verify_local)); then
+		exit
 	fi
 
 	# desabilita a troca/swap no(s) disco(s)
@@ -606,6 +654,7 @@ quit-at-end: false' >/etc/calamares/settings.conf
 	# boot EFI without partition EFI
 	#	if [[ -d /sys/firmware/efi ]] && [[ "$(cat /tmp/efi-partitions)" = "" ]]; then
 	if [[ -d /sys/firmware/efi ]] && [[ ! -s /tmp/efi-partitions ]]; then
+		# Execute o código quando o sistema está em UEFI e o arquivo está vazio
 		LIVEBOOT=EFI
 		PARTITION=LEGACY
 		if ! yad \
@@ -630,6 +679,7 @@ quit-at-end: false' >/etc/calamares/settings.conf
 		# legacy boot and EFI partition
 		#	elif [[ ! -d /sys/firmware/efi ]] && [[ "$(cat /tmp/efi-partitions)" != "" ]]; then
 	elif [[ ! -d /sys/firmware/efi ]] && [[ -s /tmp/efi-partitions ]]; then
+		# Execute o código quando o sistema não está em UEFI e o arquivo não está vazio
 		LIVEBOOT=LEGACY
 		PARTITION=EFI
 		if ! yad \
@@ -655,7 +705,10 @@ quit-at-end: false' >/etc/calamares/settings.conf
 
 	rm -f /tmp/start_calamares
 
-	cd /usr/share/bigbashview/apps/calamares/ || exit
+	cd /usr/share/bigbashview/apps/calamares/ || {
+		log_err "${red}${APP} - erro: falha ao executar o bigbashview em: /usr/share/bigbashview/apps/calamares/index.html"
+		exit
+	}
 	bigbashview \
 		-s 1100x600 \
 		-n $"Install System" \
@@ -664,7 +717,7 @@ quit-at-end: false' >/etc/calamares/settings.conf
 		-w frameless \
 		index.html
 
-	# Start calamares
+	# Iniciar calamares
 	if [[ -e "/tmp/start_calamares" ]]; then
 		if [[ -e /usr/share/biglinux/themes/biglinux/.config/kdeglobals ]]; then
 			cp -f /usr/share/biglinux/themes/biglinux/.config/kdeglobals /root/.config/kdeglobals
