@@ -60,9 +60,6 @@ function sh_calamares_biglinux_config() {
 	declare -g Send_to_the_cloud=$'Envie para a nuvem'
 	declare -g Install_the_system=$'Instalar o sistema'
 	declare -g Sending_please_wait=$'Enviando, por favor aguarde…..'
-	declare -g ctextReleaseOld=$"BigLinux é um sistema com atualizações semanais e esta versão foi lançada há mais de $days_until_today dias.
-Recomendamos baixar uma versão mais recente.
-\nDeseja continuar com a instalação desta versão antiga mesmo assim?"
 	declare -g Do_you_want_to_view=$"\nDeseja visualizar ou enviar o arquivo de log de instalação para a nuvem?\nGere um link para enviar em grupos de suporte.\n"
 	declare -g TEXT_01=$"Deseja prosseguir com a instalação no modo EFI?"
 	declare -g TEXT_02=$"A inicialização atual está usando o modo <span color='#CC2222'>EFI</span>, mas não encontrei nenhuma partição EFI neste computador.
@@ -259,6 +256,9 @@ function sh_calamares_biglinux_check_limit() {
 		# Calcula a diferença
 		if ((current_day > release_day + "$grace_time")); then
 			# if the ISO was generated more than 30 days ago, issue ALERT
+			declare -g ctextReleaseOld=$"BigLinux é um sistema com atualizações semanais e esta versão foi lançada há mais de $days_until_today dias.
+Recomendamos baixar uma versão mais recente.
+\nDeseja continuar com a instalação desta versão antiga mesmo assim?"
 			log_info "${red}${APP} - $ctextReleaseOld"
 			if ! yad --image=emblem-warning \
 				--image-on-top \
