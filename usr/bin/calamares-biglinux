@@ -47,6 +47,7 @@ function sh_calamares_biglinux_config() {
 	declare -g public_verify_local=0
 	declare -g local_path_iso='/run/miso/bootmnt/manjaro/x86_64/'
 	declare -g path_iso='/run/miso/bootmnt/manjaro/x86_64/'
+	declare -g ctesteLocal=$'Teste local foi finalizado com sucesso!'
 	declare -g Information=$"Informação"
 	declare -g Message=$'Verificando o arquivo:'
 	declare -g Message2=$'Verificando erros de download ou de unidade USB. Isso pode levar alguns minutos...'
@@ -271,7 +272,7 @@ function sh_calamares_biglinux_verify_md5sum() {
 				fi
 				((count += 25))
 				printf "%s\n" "$count"
-				printf "%s\n" "# $Message2 \n\n $Message ${cfile}.sfs"
+				printf "%s\n" "# $Message2 \n\n $Message ${path_iso}/${cfile}.sfs"
 			done
 			sleep 1
 		) |
@@ -307,9 +308,14 @@ function sh_calamares_biglinux_verify_md5sum() {
 	elif [[ "$verify" -eq 0 ]]; then
 		# Mostra uma mensagem por 3 segundos e depois continua instalação
 		log_msg "${green}${APP} - md5sum test $The_files_are_intact"
+		local ctext=""
+		if ((public_verify_local)); then
+			ctext+="${ctesteLocal}\n"
+		fi
+		ctext+="$The_files_are_intact"
 		zenity \
 			--info \
-			--text="$The_files_are_intact" \
+			--text="${ctext}" \
 			--timeout=3
 		return 0
 	elif [[ "$verify" -eq 2 ]]; then
