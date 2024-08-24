@@ -321,8 +321,8 @@ function sh_calamares_biglinux_verify_md5sum() {
 			(
 				for i in $(seq 0 100); do
 					echo "$i"                                                                            # Atualiza o percentual da barra de progresso
-					echo "# Tempo restante para prosseguir com a instalação: $((3 - (i / 33))) segundos" # Atualiza a mensagem com tempo restante
-					sleep 0.03                                                                           # Atualiza a cada 30 milissegundos
+					echo "# Tempo restante para prosseguir com a instalação: $((5 - (i / 20))) segundos" # Atualiza a mensagem com tempo restante
+					sleep 0.05                                                                           # Atualiza a cada 30 milissegundos
 				done
 			) | zenity --progress --title="$ctext" --text="Aguarde..." --width=300 --auto-close &
 			progress_pid=$!
