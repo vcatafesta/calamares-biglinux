@@ -6,7 +6,7 @@
 #  Description: Big Store installing programs for BigLinux
 #
 #  Created: 2020/01/11
-#  Altered: 2024/08/22
+#  Altered: 2024/08/23
 #
 #  Copyright (c) 2023-2024, Vilmar Catafesta <vcatafesta@gmail.com>
 #  All rights reserved.
@@ -32,7 +32,7 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 APP="${0##*/}"
-_VERSION_="1.0.0-20240822"
+_VERSION_="1.0.0-20240823"
 #
 LIBRARY=${LIBRARY:-'/usr/share/bigbashview/bcc/shell'}
 [[ -f "${LIBRARY}/bcclib.sh" ]] && source "${LIBRARY}/bcclib.sh"
@@ -54,7 +54,7 @@ function sh_calamares_biglinux_config() {
 	declare -g Verification_canceled=$'Verificação canceleda.'
 	declare -g The_files_are_intact=$'Os arquivos estão intactos.'
 	declare -g Checking_system_integrity=$'Verificando a integridade do sistema...'
-	declare -g ctextVerify2=$"ERRO de acesso encontrado ao executar o instalador!
+	declare -g ctextVerify2=$"ERRO de acesso ao executar o instalador!
 Não é possível acessar arquivos para teste de integridade em: $path_iso
 Está rodando o instalador numa ISO live?
 Se sim, tente reiniciar o sistema/instalador."
@@ -157,15 +157,15 @@ function sh_calamares_biglinux_check_limit() {
 
 	# Testa se o parâmetro --local foi fornecido e se o valor é um diretório válido
 	if [[ $public_verify_local -eq 1 ]]; then
-	  if [[ -n "$local_path_iso" ]]; then
-	    if [[ ! -d "$local_path_iso" ]]; then
-	    	local_path_iso="$path_iso"
-	    else
-	    	path_iso="$local_path_iso"
-	    fi
-	  else
-    	local_path_iso="$path_iso"
-	  fi
+		if [[ -n "$local_path_iso" ]]; then
+			if [[ ! -d "$local_path_iso" ]]; then
+				local_path_iso="$path_iso"
+			else
+				path_iso="$local_path_iso"
+			fi
+		else
+			local_path_iso="$path_iso"
+		fi
 	fi
 
 	# se é para testar localmente os arquivos, desnecessário mostar exibir mensagem de limit, se caso
@@ -310,13 +310,27 @@ function sh_calamares_biglinux_verify_md5sum() {
 		log_msg "${green}${APP} - md5sum test $The_files_are_intact"
 		local ctext=""
 		if ((public_verify_local)); then
-			ctext+="${ctesteLocal}\n"
+			ctext+="${ctesteLocal}"
 		fi
 		ctext+="$The_files_are_intact"
-		zenity \
-			--info \
-			--text="${ctext}" \
-			--timeout=3
+#		zenity \
+#			--info \
+#			--text="${ctext}" \
+#			--timeout=3
+		function show_progress_with_cancel() {
+			(
+				for i in $(seq 0 100); do
+					echo "$i"                                                                            # Atualiza o percentual da barra de progresso
+					echo "# Tempo restante para prosseguir com a instalação: $((3 - (i / 33))) segundos" # Atualiza a mensagem com tempo restante
+					sleep 0.03                                                                           # Atualiza a cada 30 milissegundos
+				done
+			) | zenity --progress --title="$ctext" --text="Aguarde..." --width=300 --auto-close &
+			progress_pid=$!
+			# Aguarda o usuário fechar o diálogo de progresso
+			wait $progress_pid
+		}
+		# Exibe o diálogo de progresso
+		show_progress_with_cancel
 		return 0
 	elif [[ "$verify" -eq 2 ]]; then
 		# Mostra mensagem que não conseguiu testar os arquivos squashfs
