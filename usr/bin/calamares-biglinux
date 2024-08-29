@@ -770,5 +770,24 @@ quit-at-end: false' >/etc/calamares/settings.conf
 }
 export -f sh_calamares_biglinux_main
 
+usage() {
+	cat <<-EOF
+		${cyan}Most used commands:
+		${red}  --limit <dias>   ${reset}- Especifica (em dias), um aviso de limite de expiração da ISO
+		${red}  --local <dir>    ${reset}- Somente testa a mídia de instalação, especificando o diretório <dir> onde estão estão localizadas.
+		${red}  --version        ${reset}- Imprime informações de versão do app
+		${red}  --help           ${reset}- Exibe este ajuda
+	EOF
+}
+
 sh_calamares_biglinux_config
+[[ "$1" = @(-H|-h|help|-help|--help) ]] && {
+  usage
+  exit $(($# ? 0 : 1))
+}
+[[ "$1" = @(-V|-v|version|-version|--version) ]] && {
+	orange=$(tput setaf 166)
+	printf "%s\n" "${orange}${0##*/} v${_VERSION_}"
+	exit $(($# ? 0 : 1))
+}
 sh_calamares_biglinux_main "$@"
